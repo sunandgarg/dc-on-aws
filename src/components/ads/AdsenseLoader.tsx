@@ -17,7 +17,20 @@ export function AdsenseLoader() {
   useEffect(() => {
     if (isAdmin || !settings || !settings.ads_globally_enabled) return;
 
+    // Defer heavy 3rd-party ad scripts until after LCP so they don't
+    // block the main thread on first paint (huge PageSpeed win).
+    let cancelled = false;
+    const ric: (cb: () => void) => number =
+      (window as any).requestIdleCallback ||
+      ((cb: () => void) => window.setTimeout(cb, 1500));
+    const handle = ric(() => {
+      if (cancelled) return;
+      runInject();
+    });
+
     const created: HTMLElement[] = [];
+
+    function runInject() {
 
     const addScript = (id: string, attrs: Record<string, string>, code?: string) => {
       if (document.getElementById(id)) return;
@@ -96,7 +109,11 @@ export function AdsenseLoader() {
       addRawHtml(`ad-script-${sc.id}`, sc.code, sc.location === "footer" ? "body" : sc.location);
     });
 
+    }
+
     return () => {
+      cancelled = true;
+      try { (window as any).cancelIdleCallback?.(handle); } catch {}
       created.forEach((el) => el.parentNode?.removeChild(el));
     };
   }, [isAdmin, settings, scripts]);
