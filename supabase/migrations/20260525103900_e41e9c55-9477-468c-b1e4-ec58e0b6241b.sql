@@ -1,0 +1,1 @@
+ALTER TABLE public.colleges ADD COLUMN IF NOT EXISTS scholarship_available text DEFAULT 'unknown';

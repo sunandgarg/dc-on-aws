@@ -1,0 +1,652 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* DekhoCampus 2.0 - Clean Education Platform
+   Primary: #3257d2 (Blue) | Accent: #f4914a (Orange)
+   All colors MUST be HSL
+*/
+
+
+@layer base {
+  :root {
+    /* Core Brand - Clean & Professional */
+    --background: 220 14% 99%;
+    --foreground: 220 25% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 10%;
+
+    /* Primary - Brand Blue */
+    --primary: 224 64% 51%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Cool neutral */
+    --secondary: 220 30% 96%;
+    --secondary-foreground: 220 40% 25%;
+
+    /* Muted */
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 10% 45%;
+
+    /* Accent - Warm orange complement */
+    --accent: 25 90% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Success */
+    --success: 150 80% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning */
+    --warning: 45 95% 55%;
+    --warning-foreground: 30 80% 20%;
+
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders */
+    --border: 220 14% 90%;
+    --input: 220 14% 90%;
+    --ring: 224 64% 51%;
+
+    --radius: 1rem;
+
+    /* Extended palette */
+    --electric-blue: 224 64% 51%;
+    --electric-orange: 25 92% 53%;
+    --coral: 15 85% 58%;
+    --mint: 165 70% 50%;
+    --golden: 40 95% 55%;
+    --pink: 330 70% 60%;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 25% 10%;
+    --sidebar-primary: 224 64% 51%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 30% 96%;
+    --sidebar-accent-foreground: 220 40% 25%;
+    --sidebar-border: 220 14% 90%;
+    --sidebar-ring: 224 64% 51%;
+  }
+
+  .dark {
+    --background: 220 25% 6%;
+    --foreground: 210 40% 98%;
+    --card: 220 25% 8%;
+    --card-foreground: 210 40% 98%;
+    --popover: 220 25% 8%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 224 64% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 20% 15%;
+    --secondary-foreground: 210 30% 90%;
+    --muted: 220 20% 12%;
+    --muted-foreground: 210 15% 65%;
+    --accent: 25 90% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 20% 15%;
+    --input: 220 20% 15%;
+    --ring: 224 64% 56%;
+    --sidebar-background: 220 25% 6%;
+    --sidebar-foreground: 210 40% 95%;
+    --sidebar-primary: 224 64% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 20% 15%;
+    --sidebar-accent-foreground: 210 30% 90%;
+    --sidebar-border: 220 20% 15%;
+    --sidebar-ring: 224 64% 56%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* Universal sticky-header offset for in-page anchor scrolls so
+       sticky navbar (h-14 mobile / h-16 tablet / h-18 desktop) never
+       overlaps the targeted section. */
+    scroll-padding-top: 88px;
+  }
+
+  /* Any element used as an in-page scroll target should clear the sticky header */
+  [id] { scroll-margin-top: 88px; }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  /* Solid color backgrounds */
+  .gradient-primary {
+    background: hsl(224 64% 51%);
+  }
+
+  .gradient-accent {
+    background: hsl(25 90% 55%);
+  }
+
+  .gradient-hero {
+    background: hsl(224 64% 51%);
+  }
+
+  .gradient-mesh {
+    background: 
+      radial-gradient(at 40% 20%, hsl(224 64% 51% / 0.08) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, hsl(25 90% 55% / 0.05) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, hsl(224 64% 51% / 0.04) 0px, transparent 50%),
+      hsl(var(--background));
+  }
+
+  /* Glassmorphism */
+  .glass {
+    background: hsl(0 0% 100% / 0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid hsl(0 0% 100% / 0.3);
+  }
+
+  .glass-dark {
+    background: hsl(220 25% 10% / 0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid hsl(0 0% 100% / 0.1);
+  }
+
+  /* Card styles */
+  .card-elevated {
+    @apply bg-card rounded-2xl border border-border;
+    box-shadow: 
+      0 1px 2px hsl(220 25% 10% / 0.02),
+      0 4px 8px hsl(220 25% 10% / 0.04),
+      0 12px 24px hsl(220 25% 10% / 0.06);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-elevated:hover {
+    box-shadow: 
+      0 2px 4px hsl(220 25% 10% / 0.02),
+      0 8px 16px hsl(220 25% 10% / 0.06),
+      0 24px 48px hsl(220 25% 10% / 0.1);
+    transform: translateY(-4px);
+  }
+
+  .card-interactive {
+    @apply card-elevated cursor-pointer;
+    border: 2px solid transparent;
+  }
+
+  .card-interactive:hover {
+    border-color: hsl(var(--primary) / 0.3);
+  }
+
+  /* Glowing buttons */
+  .btn-glow {
+    box-shadow: 0 4px 20px hsl(var(--primary) / 0.4);
+    transition: all 0.3s ease;
+  }
+
+  .btn-glow:hover {
+    box-shadow: 0 8px 40px hsl(var(--primary) / 0.5);
+    transform: translateY(-3px);
+  }
+
+  .btn-accent-glow {
+    box-shadow: 0 4px 20px hsl(var(--accent) / 0.4);
+    transition: all 0.3s ease;
+  }
+
+  .btn-accent-glow:hover {
+    box-shadow: 0 8px 40px hsl(var(--accent) / 0.5);
+    transform: translateY(-3px);
+  }
+
+  /* Shadow utilities */
+  .shadow-glow {
+    box-shadow: 0 0 30px hsl(var(--primary) / 0.2);
+  }
+
+  .shadow-soft {
+    box-shadow: 0 2px 8px hsl(220 25% 10% / 0.05);
+  }
+
+  .shadow-elevated {
+    box-shadow: 
+      0 4px 12px hsl(220 25% 10% / 0.08),
+      0 12px 24px hsl(220 25% 10% / 0.06);
+  }
+
+  /* Badge styles */
+  .badge-gradient {
+    background: hsl(224 64% 51%);
+    color: white;
+  }
+
+  .badge-success {
+    background: hsl(var(--success) / 0.15);
+    color: hsl(var(--success));
+    border: 1px solid hsl(var(--success) / 0.3);
+  }
+
+  /* AI Chat bubble */
+  .ai-bubble {
+    background: hsl(224 64% 51% / 0.06);
+    border: 1px solid hsl(224 64% 51% / 0.15);
+  }
+
+  .user-bubble {
+    background: hsl(224 64% 51%);
+    color: white;
+  }
+
+  /* DekhoCampus AI Chat — Partner Highlight Card */
+  .dc-highlight-card {
+    background: hsl(var(--primary) / 0.07);
+    border: 1.5px solid hsl(var(--primary) / 0.22);
+    border-radius: 1rem;
+    padding: 0.875rem 1rem;
+    margin: 0.75rem 0;
+    position: relative;
+  }
+
+  .dc-highlight-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
+    flex-wrap: wrap;
+  }
+
+  .dc-highlight-badge {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.375rem;
+    line-height: 1;
+  }
+
+  .dc-highlight-title {
+    font-weight: 700;
+    color: hsl(var(--primary));
+    font-size: 0.9rem;
+  }
+
+  .dc-highlight-body {
+    color: hsl(var(--foreground));
+  }
+
+  .dc-highlight-body ul {
+    list-style: disc;
+    padding-left: 1.1rem;
+    margin: 0;
+  }
+
+  .dc-highlight-body li {
+    margin-bottom: 0.4rem;
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .dc-highlight-body p {
+    font-size: 0.82rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+  }
+
+  /* University / college names rendered as bold inside the partner card → orange brand color */
+  .dc-highlight-body strong {
+    color: hsl(var(--primary));
+    font-weight: 700;
+    font-size: 0.92rem;
+    letter-spacing: -0.005em;
+  }
+
+  .dc-apply-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground)) !important;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.4rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-decoration: none !important;
+    margin-left: 0.4rem;
+    vertical-align: 0.08em;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+
+  .dc-apply-btn:hover {
+    opacity: 0.92;
+    transform: translateY(-1px);
+  }
+
+  .dc-highlight-link {
+    color: hsl(var(--primary));
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-size: 0.82rem;
+  }
+
+  /* Animations */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+
+  @keyframes pulse-ring {
+    0% { transform: scale(0.8); opacity: 1; }
+    100% { transform: scale(1.4); opacity: 0; }
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  @keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  @keyframes bounce-gentle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 20px hsl(var(--primary) / 0.3); }
+    50% { box-shadow: 0 0 40px hsl(var(--primary) / 0.5); }
+  }
+
+  .animate-float { animation: float 6s ease-in-out infinite; }
+  .animate-pulse-ring { animation: pulse-ring 2s ease-out infinite; }
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.4), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient-shift 3s ease infinite;
+  }
+  .animate-bounce-gentle { animation: bounce-gentle 2s ease-in-out infinite; }
+  .animate-marquee { animation: marquee 20s linear infinite; }
+  .animate-glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
+
+  /* Hover effects */
+  .hover-lift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-4px);
+  }
+
+  .hover-scale {
+    transition: transform 0.3s ease;
+  }
+  .hover-scale:hover {
+    transform: scale(1.02);
+  }
+
+  /* Progress bar */
+  .progress-gradient {
+    background: hsl(224 64% 51%);
+  }
+
+  /* Scrollbar styling */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+    .snap-x { scroll-snap-type: none !important; }
+  }
+  /* Focus states */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+  }
+}
+
+@layer components {
+  /* Blue vertical bar before section headings - applied via `data-h` attribute
+     so callers don't need to add wrapper markup. Used across detail pages
+     (college, course, exam, career, scholarship, article, etc.) to match
+     the news page styling. Uses a fixed blue so it stays consistent
+     regardless of the brand primary color. */
+  [data-h] {
+    position: relative;
+    padding-left: 0.85rem;
+    display: block;
+  }
+  [data-h]::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.18em;
+    bottom: 0.18em;
+    width: 5px;
+    min-height: 1em;
+    border-radius: 3px;
+    background-color: #f4914a;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    color: hsl(224 64% 51%);
+  }
+
+  .text-gradient-accent {
+    color: hsl(25 90% 55%);
+  }
+
+  .text-gradient-hero {
+    color: hsl(25 90% 55%);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Responsive text */
+  .text-display {
+    @apply text-4xl sm:text-5xl lg:text-6xl xl:text-7xl;
+  }
+
+  .text-headline {
+    @apply text-2xl sm:text-3xl lg:text-4xl;
+  }
+
+  .text-title {
+    @apply text-xl sm:text-2xl;
+  }
+}
+
+/* Global mobile overflow guard - prevents stray wide elements from breaking layout */
+@layer base {
+  html, body, #root { max-width: 100vw; overflow-x: hidden; }
+  /* Allow flex/grid children to shrink correctly on small screens (fixes overflowing rows) */
+  body * { min-width: 0; }
+  /* Media + tables should never blow out the viewport */
+  img, video, iframe, canvas, svg { max-width: 100%; height: auto; }
+  table { max-width: 100%; }
+  /* Long unbroken strings (URLs, IDs) wrap on mobile */
+  p, li, span, a, h1, h2, h3, h4, h5, h6 { overflow-wrap: anywhere; word-break: break-word; }
+}
+
+
+/* Article-specific table styling (matches dekhocampus.com news pages) */
+@layer components {
+  .article-prose table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 1px 2px hsl(var(--foreground) / 0.06);
+    font-size: 0.95rem;
+  }
+  .article-prose thead {
+    background: hsl(220 90% 50%);
+  }
+  .article-prose thead th {
+    color: #fff;
+    font-weight: 700;
+    text-align: left;
+    padding: 0.9rem 1rem;
+    font-size: 1rem;
+    border: none;
+    letter-spacing: 0.01em;
+  }
+  .article-prose tbody td {
+    padding: 0.85rem 1rem;
+    color: hsl(var(--foreground));
+    font-weight: 600;
+    border-top: 1px solid hsl(var(--border));
+    vertical-align: top;
+  }
+  .article-prose tbody tr:nth-child(even) {
+    background: hsl(220 90% 96%);
+  }
+  .article-prose tbody tr:nth-child(odd) {
+    background: hsl(0 0% 100%);
+  }
+  .dark .article-prose tbody tr:nth-child(even) {
+    background: hsl(220 30% 14%);
+  }
+  .dark .article-prose tbody tr:nth-child(odd) {
+    background: hsl(var(--card));
+  }
+  .article-prose table tbody tr td:first-child {
+    font-weight: 700;
+  }
+  /* Wrapper for horizontal scroll on small screens */
+  .article-prose table {
+    display: table;
+  }
+  @media (max-width: 640px) {
+    .article-prose table { font-size: 0.85rem; }
+    .article-prose thead th, .article-prose tbody td { padding: 0.6rem 0.7rem; }
+  }
+
+  /* Headings: tighter, dekho-style */
+  .article-prose h2 {
+    border-left: 4px solid hsl(var(--primary));
+    padding-left: 0.75rem;
+    line-height: 1.25;
+  }
+  .article-prose h3 {
+    line-height: 1.3;
+  }
+  .article-prose p { margin-bottom: 1rem; }
+  .article-prose ul > li::marker, .article-prose ol > li::marker { color: hsl(var(--primary)); }
+}
+
+/* Make article tables mobile-friendly: horizontal scroll + responsive type */
+@layer components {
+  .article-prose { overflow-wrap: anywhere; }
+  .article-prose .table-wrap,
+  .article-prose figure.table,
+  .article-prose .tableWrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 1.25rem 0;
+    border-radius: 0.5rem;
+  }
+  .article-prose table {
+    min-width: 100%;
+    table-layout: auto;
+  }
+  .article-prose thead th,
+  .article-prose tbody td {
+    white-space: normal;
+    word-break: break-word;
+  }
+  @media (max-width: 640px) {
+    .article-prose table { font-size: 0.82rem; }
+    .article-prose thead th { font-size: 0.85rem; padding: 0.55rem 0.6rem; }
+    .article-prose tbody td { padding: 0.55rem 0.6rem; }
+  }
+}
+
+/* Compact article tables (2026 tightened scale) */
+@layer components {
+  .article-prose table { font-size: 0.82rem; }
+  .article-prose thead th { font-size: 0.82rem; padding: 0.55rem 0.65rem; font-weight: 700; }
+  .article-prose tbody td { padding: 0.55rem 0.65rem; font-weight: 500; }
+  .article-prose table tbody tr td:first-child { font-weight: 600; }
+  /* Tighter desktop padding */
+  .article-prose thead th { padding: 0.45rem 0.55rem; }
+  .article-prose tbody td { padding: 0.45rem 0.55rem; }
+  @media (max-width: 640px) {
+    .article-prose table { font-size: 0.7rem; }
+    .article-prose thead th { font-size: 0.7rem; padding: 0.35rem 0.4rem; }
+    .article-prose tbody td { padding: 0.35rem 0.4rem; }
+    .article-prose .table-wrap { margin: 0.9rem -0.25rem; }
+  }
+  /* H2 accent bar a touch thinner */
+  .article-prose h2 { border-left-width: 3px; padding-left: 0.55rem; line-height: 1.2; }
+  .article-prose h3 { line-height: 1.25; }
+}
+
+/* Inline preview styling for doc-viewer blocks inside the rich-text editor.
+   In the live article, this block is replaced with the React <DocumentViewer />. */
+@layer components {
+  .doc-viewer {
+    display: block;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    padding: 0.5rem;
+    background: hsl(var(--muted) / 0.4);
+    margin: 1rem 0;
+  }
+  .doc-viewer img {
+    display: block;
+    max-width: 100%;
+    margin: 0.25rem auto;
+    border-radius: 0.5rem;
+  }
+}

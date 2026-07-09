@@ -1,0 +1,2 @@
+UPDATE public.site_integrations SET category = 'google', label = 'Fallback YouTube — Exams (How to Apply)', enabled = true WHERE key = 'youtube_fallback_how_to_apply_exam';
+UPDATE public.site_integrations SET enabled = true WHERE key IN ('youtube_fallback_college','youtube_fallback_course','youtube_fallback_exam','youtube_fallback_career','youtube_default_url');

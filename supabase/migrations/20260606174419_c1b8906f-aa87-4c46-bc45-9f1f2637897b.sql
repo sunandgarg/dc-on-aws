@@ -1,0 +1,1 @@
+UPDATE public.lead_form_settings SET channel_preference = 'whatsapp' WHERE singleton = true;

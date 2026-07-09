@@ -1,0 +1,1 @@
+ALTER TABLE public.promoted_programs ADD COLUMN IF NOT EXISTS contact_phone text NOT NULL DEFAULT '';

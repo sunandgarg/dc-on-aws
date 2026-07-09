@@ -1,0 +1,1 @@
+ALTER TABLE public.faculty ADD COLUMN IF NOT EXISTS gender text DEFAULT 'male';

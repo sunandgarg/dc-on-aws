@@ -1,0 +1,2 @@
+ALTER TABLE public.colleges ADD COLUMN IF NOT EXISTS is_partner boolean NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS idx_colleges_is_partner ON public.colleges (is_partner) WHERE is_partner = true;

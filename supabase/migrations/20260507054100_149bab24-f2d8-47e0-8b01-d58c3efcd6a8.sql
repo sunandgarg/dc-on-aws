@@ -1,0 +1,1 @@
+ALTER TABLE public.colleges ADD COLUMN IF NOT EXISTS approval_logos text[] NOT NULL DEFAULT '{}'::text[];

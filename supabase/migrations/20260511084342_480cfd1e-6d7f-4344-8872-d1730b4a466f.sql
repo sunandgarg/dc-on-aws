@@ -1,0 +1,2 @@
+ALTER TABLE public.study_board_links ADD COLUMN IF NOT EXISTS category text NOT NULL DEFAULT 'general';
+CREATE INDEX IF NOT EXISTS idx_study_board_links_lookup ON public.study_board_links(class_num, board_slug, category, display_order);

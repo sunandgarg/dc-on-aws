@@ -1,0 +1,2 @@
+UPDATE public.program_categories SET icon_url='/category-icons/cat-data-science.png' WHERE slug='data-science';
+UPDATE public.program_categories SET icon_url='/category-icons/cat-marketing.png' WHERE slug='marketing';
