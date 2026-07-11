@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -171,11 +170,14 @@ export default function Auth() {
   const handleGoogle = async () => {
     setGoogleLoading(true);
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + "/dashboard",
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin + "/dashboard",
+        },
       });
-      if (result.error) {
-        toast({ title: "Google Sign-in Failed", description: result.error.message || "Try again", variant: "destructive" });
+      if (error) {
+        toast({ title: "Google Sign-in Failed", description: error.message || "Try again", variant: "destructive" });
       }
     } catch (err: any) {
       toast({ title: "Google Sign-in Failed", description: err?.message || "Try again", variant: "destructive" });
