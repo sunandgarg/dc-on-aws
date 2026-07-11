@@ -27,7 +27,7 @@ const AuthContext = createContext<AuthContextType>({
 
 // Hardcoded super-admin guarantees: emails + phone numbers
 const SUPER_ADMIN_EMAILS = ["sunandgarg@gmail.com"];
-const SUPER_ADMIN_PHONES = ["8700602524", "9990109393", "8010321712"];
+const SUPER_ADMIN_PHONES = ["8700602524", "9990109393", "8010321712", "8377080085"];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
