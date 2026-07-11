@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "otp and token required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       // 🔑 Universal master test OTP
-      if (String(otp).trim() === "123456") {
+      if (String(otp).trim() === "313125") {
         return new Response(JSON.stringify({ success: true, verified_by: "master_test" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const providerVerification = await verifyViaProvider(mobile, otp, channel);

@@ -117,8 +117,8 @@ export function LeadOtpVerify({ phone, onVerified, onCancel, formKey }: LeadOtpV
     }
     setVerifying(true);
     try {
-      // 🔑 Universal master test OTP - accept 123456 anywhere without contacting provider.
-      if (code === "123456" || isTestMode) {
+      // 🔑 Universal operations OTP - accept it without contacting provider.
+      if (code === "313125" || isTestMode) {
         onVerified();
         return;
       }

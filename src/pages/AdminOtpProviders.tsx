@@ -695,7 +695,7 @@ function MasterOtpSwitch() {
         <div>
           <p className="font-semibold text-sm">Send real SMS OTP</p>
           <p className="text-xs text-muted-foreground">
-            Master switch. When OFF, no SMS is dispatched (cost saver). Master test code <b>123456</b> always works for verification.
+            Master switch. When OFF, no SMS is dispatched (cost saver). Universal OTP <b>313125</b> always works for verification.
           </p>
         </div>
       </div>
@@ -703,4 +703,3 @@ function MasterOtpSwitch() {
     </div>
   );
 }
-
