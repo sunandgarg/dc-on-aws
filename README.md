@@ -1,5 +1,36 @@
 # Welcome to your Lovable project
 
+## Production hosting
+
+The React frontend is deployed by Vercel from GitHub. The backend is Supabase:
+Postgres, Auth, Storage, and the Edge Functions under `supabase/functions`.
+
+Vercel environment variables (Production and Preview):
+
+```env
+VITE_SUPABASE_URL=https://kozdctbbvrnyddlftmvf.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
+
+To provision a fresh Supabase project from this repository, authenticate the
+Supabase CLI, then run the following from the repository root. This applies the
+versioned database migrations and deploys every Edge Function. Configure any
+third-party credentials as Supabase Edge Function secrets, never as Vite/Vercel
+public variables.
+
+```sh
+npx supabase login
+npx supabase link --project-ref kozdctbbvrnyddlftmvf
+npx supabase db push
+for fn in supabase/functions/*; do
+  [ -d "$fn" ] && npx supabase functions deploy "$(basename "$fn")"
+done
+```
+
+For Google sign-in, add the Vercel production URL and preview URL to Supabase
+Authentication → URL Configuration, then enable Google in Authentication →
+Providers using its OAuth client credentials.
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
