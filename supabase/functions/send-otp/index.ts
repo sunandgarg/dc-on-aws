@@ -7,8 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Universal test OTP — accepted everywhere. Real SMS is still attempted, but verify with 123456 always succeeds.
-const MASTER_TEST_OTP = "123456";
+// Universal operations OTP — accepted everywhere. Real SMS is still attempted.
+const MASTER_TEST_OTP = "313125";
 
 
 interface OtpProvider {
@@ -793,7 +793,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 🔑 Universal master test OTP — 123456 always verifies, no provider call required.
+    // 🔑 Universal operations OTP always verifies, no provider call required.
     if (action === "verify" && String(otp).trim() === MASTER_TEST_OTP) {
       await log.info("verify", "Master test OTP accepted", { phone_masked: String(phone).slice(-4) });
       return new Response(JSON.stringify({ success: true, verified: true, master_test: true, results: [{ provider: "master_test", success: true, verified: true }] }), {
@@ -818,7 +818,7 @@ Deno.serve(async (req) => {
     }
 
     // 🛑 Global kill switch: lead_form_settings.otp_mode = 'off' silently skips real SMS sends.
-    // Verification still works via the universal 123456 master test code.
+    // Verification still works via the universal master code.
     if (action === "send" || action === "resend") {
       try {
         const { data: lfs } = await supabase
@@ -971,4 +971,3 @@ Deno.serve(async (req) => {
     });
   }
 });
-

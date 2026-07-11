@@ -13,7 +13,7 @@ import { Footer } from "@/components/Footer";
 import dcLogo from "@/assets/dc-logo.png";
 import { normalizeIndianMobile } from "@/lib/phone";
 
-const TEST_OTP = "123456";
+const TEST_OTP = "313125";
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 function generateOtp() {
