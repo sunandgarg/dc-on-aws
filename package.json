@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "postbuild": "tsx scripts/generate-sitemap.ts"
+    "postbuild": "tsx scripts/generate-sitemap.ts",
+    "deploy:prod": "bash scripts/deploy-prod.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
