@@ -460,7 +460,10 @@ async function sendViaFast2SMS(provider: OtpProvider, phone: string, otp?: strin
 
   const otpExpiry = clampNumber(provider.config_json?.otp_expiry_minutes, 1, 10080, 15);
   const otpLength = clampNumber(provider.config_json?.otp_length ?? otp?.length, 4, 10, 6);
-  const variablesValues = provider.config_json?.variables_values || (otp ? `${otp}|${otpExpiry}` : undefined);
+  // Fast2SMS Smart OTP treats `otp` as its own template token. In the approved
+  // DekhoCampus template, `{#VAR#}` is only the expiry value, so sending
+  // `otp|expiry` causes a template-variable-count mismatch.
+  const variablesValues = provider.config_json?.variables_values || String(otpExpiry);
   const body: Record<string, any> = { mobile, otp_id: otpId, otp_expiry: otpExpiry, otp_length: otpLength };
   if (otp) body.otp = otp;
   if (variablesValues) body.variables_values = variablesValues;
@@ -817,8 +820,9 @@ Deno.serve(async (req) => {
       await log.warn("verify", "Stored OTP not verified; falling back to provider check", { detail: stored.detail });
     }
 
-    // 🛑 Global kill switch: lead_form_settings.otp_mode = 'off' silently skips real SMS sends.
-    // Verification still works via the universal master code.
+    // `otp_mode` controls form presentation, but never suppresses a requested
+    // provider delivery. Silently returning `skipped` here made Fast2SMS appear
+    // broken even when its configuration and balance were valid.
     if (action === "send" || action === "resend") {
       try {
         const { data: lfs } = await supabase
@@ -827,13 +831,7 @@ Deno.serve(async (req) => {
           .eq("singleton", true)
           .maybeSingle();
         if (lfs?.otp_mode === "off") {
-          await log.warn("serve", "OTP delivery disabled by admin (otp_mode=off)");
-          return new Response(JSON.stringify({
-            success: true,
-            skipped: true,
-            reason: "sms_otp_disabled_by_admin",
-            results: [{ provider: "disabled", success: true, skipped: true }],
-          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          await log.warn("serve", "OTP mode is off, but continuing requested provider delivery");
         }
       } catch (_) { /* fall through and attempt send */ }
     }
