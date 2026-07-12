@@ -65,6 +65,17 @@ const groups: NavGroup[] = [
     ],
   },
   {
+    label: "CAT Universe",
+    icon: Sparkles,
+    items: [
+      { label: "Dashboard", href: "/admin/cat-universe", icon: Sparkles, module: "cat_universe" },
+      { label: "Sections", href: "/admin/cat-universe/sections", icon: Sparkles, module: "cat_universe" },
+      { label: "Modules", href: "/admin/cat-universe/modules", icon: Sparkles, module: "cat_universe" },
+      { label: "Resources", href: "/admin/cat-universe/resources", icon: Library, module: "cat_universe" },
+      { label: "Cut-offs", href: "/admin/cat-universe/cutoffs", icon: BarChart3, module: "cat_universe" },
+    ],
+  },
+  {
     label: "College Data",
     icon: Building2,
     items: [

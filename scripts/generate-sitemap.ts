@@ -42,6 +42,7 @@ const STATIC: SitemapEntry[] = [
   { path: "/study-material", changefreq: "weekly", priority: "0.7" },
   { path: "/resources", changefreq: "weekly", priority: "0.7" },
   { path: "/tools", changefreq: "weekly", priority: "0.6" },
+  { path: "/cat-universe", changefreq: "daily", priority: "0.8" },
   { path: "/compare", changefreq: "weekly", priority: "0.5" },
   { path: "/eligibility-checker", changefreq: "weekly", priority: "0.7" },
   { path: "/college-predictor", changefreq: "weekly", priority: "0.7" },
@@ -161,7 +162,7 @@ function xmlFor(entries: SitemapEntry[]) {
 }
 
 (async () => {
-  const [colleges, courses, exams, careers, scholarships, articles, landing, study] = await Promise.all([
+  const [colleges, courses, exams, careers, scholarships, articles, landing, catUniverseModules, study] = await Promise.all([
     fetchSlugs("colleges", (q) => q.eq("is_active", true)),
     fetchSlugs("courses", (q) => q.eq("is_active", true)),
     fetchSlugs("exams", (q) => q.eq("is_active", true)),
@@ -169,6 +170,7 @@ function xmlFor(entries: SitemapEntry[]) {
     fetchSlugs("scholarships", (q) => q.eq("is_active", true)),
     fetchSlugs("articles", (q) => q.eq("is_active", true)),
     fetchSlugs("landing_pages", (q) => q.eq("is_active", true)),
+    fetchSlugs("cat_universe_modules", (q) => q.eq("is_active", true)),
     studyEntries(),
   ]);
 
@@ -181,6 +183,7 @@ function xmlFor(entries: SitemapEntry[]) {
     ...entriesFor("/scholarships", scholarships, "0.7"),
     ...entriesFor("/articles", articles, "0.6"),
     ...entriesFor("/landing", landing, "0.6"),
+    ...entriesFor("/cat-universe", catUniverseModules, "0.75"),
     ...study,
     ...toolComboEntries(),
   ];

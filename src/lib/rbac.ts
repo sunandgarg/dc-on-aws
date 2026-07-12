@@ -5,7 +5,7 @@ export type Module =
   | "leads" | "users" | "integrations" | "backup" | "ads" | "banners"
   | "promoted_programs" | "featured" | "ai_providers" | "otp_providers"
   | "applications" | "referrals" | "careers" | "companies" | "placements"
-  | "faculty" | "facilities" | "contacts" | "course_fees" | "partners"
+  | "faculty" | "facilities" | "contacts" | "course_fees" | "partners" | "cat_universe"
   | "content" | "legal" | "sitemap" | "docs";
 
 export type Action = "view" | "create" | "edit" | "edit_own" | "delete" | "publish";
@@ -26,7 +26,7 @@ export const CAPABILITIES: Matrix = {
       "integrations","backup","ads","banners","promoted_programs","featured",
       "ai_providers","otp_providers","applications","referrals","careers",
       "companies","placements","faculty","facilities","contacts","course_fees",
-      "partners","content","legal","sitemap","docs",
+      "partners","cat_universe","content","legal","sitemap","docs",
     ] as Module[]).map(m => [m, ALL])
   ),
   manager: {
@@ -35,11 +35,11 @@ export const CAPABILITIES: Matrix = {
     ads: NO_DELETE, banners: NO_DELETE, promoted_programs: NO_DELETE, featured: NO_DELETE,
     careers: NO_DELETE, companies: NO_DELETE, placements: NO_DELETE, faculty: NO_DELETE,
     facilities: NO_DELETE, contacts: NO_DELETE, course_fees: NO_DELETE,
-    partners: NO_DELETE, content: NO_DELETE, legal: NO_DELETE, sitemap: VIEW, docs: VIEW,
+    partners: NO_DELETE, cat_universe: NO_DELETE, content: NO_DELETE, legal: NO_DELETE, sitemap: VIEW, docs: VIEW,
   },
   editor: {
     articles: NO_DELETE, colleges: CREATE_ONLY, courses: VIEW, exams: VIEW,
-    study_material: NO_DELETE, content: NO_DELETE, faculty: NO_DELETE,
+    study_material: NO_DELETE, content: NO_DELETE, faculty: NO_DELETE, cat_universe: NO_DELETE,
   },
   contributor: {
     articles: EDIT_OWN, // can add new, edit only their own, never delete

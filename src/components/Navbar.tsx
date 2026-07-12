@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { MegaMenu } from "@/components/MegaMenu";
 
 const mobileNav = [
+  { label: "CAT Universe", href: "/cat-universe" },
   { label: "Colleges", href: "/colleges" },
   { label: "Courses", href: "/courses" },
   { label: "Exams", href: "/exams" },
@@ -71,6 +72,12 @@ export function Navbar() {
           <MegaMenu />
 
           <div className="flex items-center gap-2">
+            <Link to="/cat-universe" className="hidden lg:inline-flex">
+              <Button variant="outline" className="rounded-xl border-orange-200 text-orange-700 hover:bg-orange-50">
+                <Sparkles className="w-4 h-4 mr-2" />
+                CAT Universe
+              </Button>
+            </Link>
             {isAdmin && (
               <Link to="/admin">
                 <Button variant="outline" size="sm" className="hidden md:flex gap-2 rounded-xl border-amber-200 text-amber-600 hover:bg-amber-50">

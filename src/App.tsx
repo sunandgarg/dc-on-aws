@@ -151,6 +151,9 @@ const EligibilityChecker = lazy(() => import("./pages/EligibilityChecker"));
 const CollegePredictor = lazy(() => import("./pages/CollegePredictor"));
 const LockTarget = lazy(() => import("./pages/LockTarget"));
 const TargetDashboard = lazy(() => import("./pages/TargetDashboard"));
+const CatUniverse = lazyRetry(() => import("./pages/CatUniverse"), "CatUniverse");
+const CatUniverseModulePage = lazyRetry(() => import("./pages/CatUniverseModulePage"), "CatUniverseModulePage");
+const AdminCatUniverse = lazyRetry(() => import("./pages/AdminCatUniverse"), "AdminCatUniverse");
 
 
 function CollegeRoute() {
@@ -234,6 +237,7 @@ const App = () => (
             "hero-banners","hero_settings","featured-colleges","trusted-partners",
             "lead-form-settings","feature-toggles","ads","site-integration",
             "vacancies","colleges","courses","exams","articles","careers","scholarships",
+            "cat-universe",
           ].some((p) => k === p || k.startsWith(p));
         },
       },
@@ -282,6 +286,8 @@ const App = () => (
               <Route path="/eligibility-checker/:slug" element={<EligibilityChecker />} />
               <Route path="/college-predictor" element={<CollegePredictor />} />
               <Route path="/college-predictor/:slug" element={<CollegePredictor />} />
+              <Route path="/cat-universe" element={<CatUniverse />} />
+              <Route path="/cat-universe/:slug" element={<CatUniverseModulePage />} />
               <Route path="/lock-target" element={<LockTarget />} />
               <Route path="/lock-target/:slug" element={<LockTarget />} />
               <Route path="/achieve-target" element={<LockTarget />} />
@@ -322,6 +328,11 @@ const App = () => (
               <Route path="/admin/banners" element={<ProtectedRoute module="banners"><AdminBanners /></ProtectedRoute>} />
               <Route path="/admin/hero" element={<ProtectedRoute requireAdmin><AdminHeroSettings /></ProtectedRoute>} />
               <Route path="/admin/hero-categories" element={<ProtectedRoute requireAdmin><AdminHeroCategories /></ProtectedRoute>} />
+              <Route path="/admin/cat-universe" element={<ProtectedRoute module="cat_universe"><AdminCatUniverse /></ProtectedRoute>} />
+              <Route path="/admin/cat-universe/sections" element={<ProtectedRoute module="cat_universe"><AdminCatUniverse /></ProtectedRoute>} />
+              <Route path="/admin/cat-universe/modules" element={<ProtectedRoute module="cat_universe"><AdminCatUniverse /></ProtectedRoute>} />
+              <Route path="/admin/cat-universe/resources" element={<ProtectedRoute module="cat_universe"><AdminCatUniverse /></ProtectedRoute>} />
+              <Route path="/admin/cat-universe/cutoffs" element={<ProtectedRoute module="cat_universe"><AdminCatUniverse /></ProtectedRoute>} />
               <Route path="/admin/popup-analytics" element={<ProtectedRoute requireAdmin><AdminPopupAnalytics /></ProtectedRoute>} />
               <Route path="/admin/cta-conversions" element={<ProtectedRoute requireAdmin><AdminCtaConversions /></ProtectedRoute>} />
               <Route path="/admin/partners" element={<ProtectedRoute module="partners"><AdminPartners /></ProtectedRoute>} />
