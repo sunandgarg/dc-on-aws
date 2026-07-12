@@ -53,6 +53,14 @@ if (offline && apply) throw new Error("--offline is only valid for a dry run.");
 
 const clean = (value: unknown) => typeof value === "string" ? value.replace(/\u0000/g, "").trim() || null : value == null ? null : String(value).trim() || null;
 const slugify = (value: unknown) => (clean(value) ?? "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 180);
+const titleCase = (value: unknown) => {
+  const input = clean(value);
+  if (!input) return null;
+  return input
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .replace(/\b([a-z])/g, (match) => match.toUpperCase());
+};
 const stringList = (value: unknown): string[] => {
   if (Array.isArray(value)) return value.flatMap(stringList);
   const text = clean(value);
@@ -70,6 +78,67 @@ const date = (value: unknown) => {
   const raw = clean(value); if (!raw) return null;
   const parsed = new Date(raw); return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 };
+const integer = (value: unknown, fallback = 0) => {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
+  const raw = clean(value);
+  if (!raw) return fallback;
+  const match = raw.replace(/,/g, "").match(/-?\d+/);
+  return match ? Number.parseInt(match[0], 10) : fallback;
+};
+const numeric = (value: unknown, fallback = 0) => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const raw = clean(value);
+  if (!raw) return fallback;
+  const normalized = raw.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  return normalized ? Number.parseFloat(normalized[0]) : fallback;
+};
+const firstYear = (value: unknown, fallback = 2000) => {
+  const raw = clean(value);
+  if (!raw) return fallback;
+  const match = raw.match(/\b(18|19|20)\d{2}\b/);
+  return match ? Number.parseInt(match[0], 10) : fallback;
+};
+const inferBoolean = (value: unknown, fallback = false) => {
+  if (typeof value === "boolean") return value;
+  const raw = clean(value)?.toLowerCase();
+  if (!raw) return fallback;
+  if (["1", "true", "yes", "y", "available", "enabled"].includes(raw)) return true;
+  if (["0", "false", "no", "n", "unavailable", "disabled"].includes(raw)) return false;
+  return fallback;
+};
+const feeNumber = (value: unknown) => {
+  const raw = clean(value);
+  if (!raw) return 0;
+  const compact = raw.toLowerCase().replace(/₹|rs\.?|inr|\/year|per year|annum|pa|p\.a\./g, "").trim();
+  const match = compact.match(/(\d+(?:\.\d+)?)\s*(cr|crore|l|lac|lakh|k|thousand)?/i);
+  if (!match) return 0;
+  const amount = Number.parseFloat(match[1]);
+  const unit = (match[2] ?? "").toLowerCase();
+  if (!Number.isFinite(amount)) return 0;
+  if (unit === "cr" || unit === "crore") return Math.round(amount * 10_000_000);
+  if (unit === "l" || unit === "lac" || unit === "lakh") return Math.round(amount * 100_000);
+  if (unit === "k" || unit === "thousand") return Math.round(amount * 1_000);
+  return Math.round(amount);
+};
+const splitFeeRange = (low: unknown, high: unknown, display?: unknown) => {
+  let lowValue = feeNumber(low);
+  let highValue = feeNumber(high);
+  if (!lowValue && !highValue) {
+    const raw = clean(display);
+    if (raw) {
+      const matches = [...raw.matchAll(/(\d+(?:\.\d+)?)\s*(cr|crore|l|lac|lakh|k|thousand)?/gi)].map((match) => feeNumber(`${match[1]} ${match[2] ?? ""}`));
+      if (matches.length === 1) lowValue = highValue = matches[0];
+      if (matches.length >= 2) {
+        lowValue = matches[0];
+        highValue = matches[1];
+      }
+    }
+  }
+  if (!highValue) highValue = lowValue;
+  if (!lowValue) lowValue = highValue;
+  if (lowValue > highValue) return { low_fee: highValue, high_fee: lowValue };
+  return { low_fee: lowValue, high_fee: highValue };
+};
 const record = (value: unknown): Json => value && typeof value === "object" && !Array.isArray(value) ? value as Json : {};
 const nested = (row: Json, key: string) => record(row[key]);
 const allowedAssetHost = new Set(["d3pbz6yh6cuepy.cloudfront.net", "devdc.s3.eu-north-1.amazonaws.com", "dekhocampus.s3.ap-south-1.amazonaws.com"]);
@@ -83,6 +152,118 @@ async function files(dir: string): Promise<string[]> {
 }
 
 function publication() { return publish ? { status: "published", is_active: true } : { status: "draft", is_active: false }; }
+function sanitizePayload(entity: Entity, payload: Json): Json {
+  const base = Object.fromEntries(Object.entries(payload).map(([key, value]) => [key, value ?? null])) as Json;
+  if (entity === "colleges") {
+    return {
+      ...base,
+      name: text(base.name, 500) ?? "",
+      short_name: text(base.short_name, 255) ?? "",
+      state: titleCase(base.state) ?? "",
+      city: titleCase(base.city) ?? "",
+      location: text(base.location, 500) ?? "",
+      type: titleCase(base.type) ?? "Private",
+      category: titleCase(base.category) ?? "General",
+      established: firstYear(base.established, 2000),
+      rating: numeric(base.rating, 0),
+      reviews: integer(base.reviews, 0),
+      courses_count: integer(base.courses_count, 0),
+      fees: text(base.fees, 10_000) ?? "",
+      description: text(base.description) ?? "",
+      image: url(base.image) ?? "",
+      logo: url(base.logo) ?? "",
+      brochure_url: url(base.brochure_url) ?? "",
+      carousel_images: stringList(base.carousel_images).map(url).filter((item): item is string => Boolean(item)),
+      gallery_images: stringList(base.gallery_images).map(url).filter((item): item is string => Boolean(item)),
+      categories: stringList(base.categories).map((item) => titleCase(item) ?? item),
+      related_exams: stringList(base.related_exams),
+      related_courses: stringList(base.related_courses),
+      tags: stringList(base.tags),
+      is_active: inferBoolean(base.is_active, false),
+      status: publish ? "Published" : "Draft",
+      meta_title: text(base.meta_title, 500) ?? "",
+      meta_description: text(base.meta_description, 5_000) ?? "",
+      meta_keywords: text(base.meta_keywords, 5_000) ?? "",
+    };
+  }
+  if (entity === "courses") {
+    const fees = splitFeeRange(base.low_fee, base.high_fee, base.avg_fees ?? base.fee ?? base.fees_content);
+    return {
+      ...base,
+      name: text(base.name, 500) ?? "",
+      full_name: text(base.full_name, 500) ?? text(base.name, 500) ?? "",
+      category: titleCase(base.category) ?? "General",
+      level: titleCase(base.level) ?? "General",
+      duration: text(base.duration, 255) ?? "",
+      duration_type: titleCase(base.duration_type) ?? "",
+      study_type: titleCase(base.study_type) ?? "",
+      colleges_count: integer(base.colleges_count, 0),
+      rating: numeric(base.rating, 0),
+      fee: numeric(base.fee, fees.low_fee || fees.high_fee),
+      low_fee: fees.low_fee,
+      high_fee: fees.high_fee,
+      avg_fees: text(base.avg_fees, 255) ?? "",
+      avg_salary: text(base.avg_salary, 255) ?? "",
+      growth: text(base.growth, 255) ?? "",
+      image: url(base.image) ?? "",
+      top_exams: stringList(base.top_exams),
+      careers: stringList(base.careers),
+      subjects: stringList(base.subjects),
+      specializations: stringList(base.specializations),
+      categories: stringList(base.categories).map((item) => titleCase(item) ?? item),
+      is_active: inferBoolean(base.is_active, false),
+      status: publish ? "Published" : "Draft",
+      meta_title: text(base.meta_title, 500) ?? "",
+      meta_description: text(base.meta_description, 5_000) ?? "",
+      meta_keywords: text(base.meta_keywords, 5_000) ?? "",
+    };
+  }
+  if (entity === "exams") {
+    return {
+      ...base,
+      name: text(base.name, 500) ?? "",
+      full_name: text(base.full_name, 500) ?? text(base.name, 500) ?? "",
+      short_name: text(base.short_name, 255) ?? "",
+      category: titleCase(base.category) ?? "General",
+      categories: stringList(base.categories).map((item) => titleCase(item) ?? item),
+      exam_type: text(base.exam_type, 255) ?? "",
+      mode: text(base.mode, 255) ?? "",
+      duration: text(base.duration, 255) ?? "",
+      frequency: text(base.frequency, 255) ?? "",
+      application_start_date: text(base.application_start_date, 255) ?? "",
+      application_end_date: text(base.application_end_date, 255) ?? "",
+      exam_date: text(base.exam_date, 255) ?? "",
+      result_date: text(base.result_date, 255) ?? "",
+      image: url(base.image) ?? "",
+      logo: url(base.logo) ?? "",
+      website: url(base.website) ?? "",
+      registration_url: url(base.registration_url) ?? "#",
+      top_colleges: stringList(base.top_colleges),
+      syllabus: Array.isArray(base.syllabus) ? stringList(base.syllabus) : stringList(text(base.syllabus)),
+      negative_marking: inferBoolean(base.negative_marking, false),
+      is_active: inferBoolean(base.is_active, false),
+      status: publish ? "Published" : "Draft",
+      meta_title: text(base.meta_title, 500) ?? "",
+      meta_description: text(base.meta_description, 5_000) ?? "",
+      meta_keywords: text(base.meta_keywords, 5_000) ?? "",
+    };
+  }
+  return {
+    ...base,
+    title: text(base.title, 500) ?? "",
+    description: text(base.description) ?? "",
+    content: text(base.content) ?? "",
+    featured_image: url(base.featured_image) ?? "",
+    author: text(base.author, 255) ?? "",
+    category: titleCase(base.category) ?? "",
+    tags: stringList(base.tags),
+    is_active: inferBoolean(base.is_active, false),
+    status: publish ? "Published" : "Draft",
+    meta_title: text(base.meta_title, 500) ?? "",
+    meta_description: text(base.meta_description, 5_000) ?? "",
+    meta_keywords: text(base.meta_keywords, 5_000) ?? "",
+  };
+}
 function candidateFromPage(file: string, root: string, document: Json): Candidate | null {
   const props = nested(document, "pageProps");
   const route = relative(root, file).replaceAll("\\", "/");
@@ -91,28 +272,28 @@ function candidateFromPage(file: string, root: string, document: Json): Candidat
     const r = nested(props, "college"); const slug = slugify(r.clg_slug ?? props.college_slug);
     const name = text(r.clg_name, 500); if (!slug || !name) return null;
     const images = [url(r.banner_url), url(r.second_banner_url), ...stringList(r.college_gallery).map(url)].filter((item): item is string => Boolean(item));
-    return { entity: "colleges", slug, source, richness: JSON.stringify(r).length, payload: {
+    return { entity: "colleges", slug, source, richness: JSON.stringify(r).length, payload: sanitizePayload("colleges", {
       slug, name, short_name: text(r.clg_short, 255), state: text(r.clg_state, 255), city: text(r.clg_city, 255), location: text(r.clg_location, 500), type: text(r.clg_institute_type, 255), category: text(r.college_category, 255), established: text(r.clg_estd, 64), description: text(r.clg_about_us) ?? text(r.clg_about), image: images[0] ?? url(r.logo_url), logo: url(r.logo_url), carousel_images: images, gallery_images: images.slice(2), fees: text(r.fees, 10_000), placement_content: text(r.clg_placement_summary) ?? text(r.placement), eligibility_criteria: text(r.eligibility_criteria), admission_process: text(r.admission_process), scholarship_details: text(r.scholarship_offered), hostel_life: text(r.hostel_life), course_fee_content: text(r.undergraduate_fee_structure) ?? text(r.postgraduate_fee_structure), facilities_content: text(r.facillities), brochure_url: url(r.broucher), meta_title: text(r.meta_title, 500), meta_description: text(r.meta_description, 5_000), meta_keywords: text(r.meta_keywords, 5_000), categories: stringList(r.college_category), related_exams: stringList(r.accepted_exams), related_courses: stringList(r.popular_courses), tags: ["legacy-archive"], ...publication()
-    } };
+    }) };
   }
   if (route.startsWith("courses/")) {
     const r = nested(props, "course"); const slug = slugify(r.course_slug ?? props.course_slug);
     const name = text(r.course_name, 500); if (!slug || !name) return null;
-    return { entity: "courses", slug, source, richness: JSON.stringify(r).length, payload: {
-      slug, name, full_name: name, category: text(r.category, 255), level: text(r.course_level, 255), duration: text(r.duration, 255), duration_type: text(r.duration_type, 255), study_type: text(r.study_type, 255), low_fee: text(r.low_fee, 100), high_fee: text(r.high_fee, 100), image: url(r.logo_url), description: text(r.course_about), about_content: text(r.course_about), scope_content: text(r.course_scope), subjects_content: text(r.course_subjects), eligibility: text(r.course_eligiblity), specialization_content: text(r.branch), categories: stringList(r.category), specializations: stringList(r.branch), top_exams: stringList(r.popular_exams), meta_title: text(r.meta_title, 500), meta_description: text(r.meta_description, 5_000), meta_keywords: text(r.meta_keywords, 5_000), ...publication()
-    } };
+    return { entity: "courses", slug, source, richness: JSON.stringify(r).length, payload: sanitizePayload("courses", {
+      slug, name, full_name: name, category: text(r.category, 255), level: text(r.course_level, 255), duration: text(r.duration, 255), duration_type: text(r.duration_type, 255), study_type: text(r.study_type, 255), low_fee: r.low_fee, high_fee: r.high_fee, fee: r.fee, avg_fees: text(r.fees, 255), image: url(r.logo_url), description: text(r.course_about), about_content: text(r.course_about), scope_content: text(r.course_scope), subjects_content: text(r.course_subjects), eligibility: text(r.course_eligiblity), specialization_content: text(r.branch), categories: stringList(r.category), specializations: stringList(r.branch), top_exams: stringList(r.popular_exams), meta_title: text(r.meta_title, 500), meta_description: text(r.meta_description, 5_000), meta_keywords: text(r.meta_keywords, 5_000), ...publication()
+    }) };
   }
   if (route.startsWith("exams/")) {
     const r = nested(props, "exam"); const slug = slugify(r.slug ?? props.exam_slug);
     const name = text(r.name, 500); if (!slug || !name) return null;
-    return { entity: "exams", slug, source, richness: JSON.stringify(r).length, payload: {
+    return { entity: "exams", slug, source, richness: JSON.stringify(r).length, payload: sanitizePayload("exams", {
       slug, name, full_name: name, short_name: text(r.short_name, 255), logo: url(r.logo), image: url(r.logo), category: text(r.category, 255), categories: stringList(r.category), exam_type: text(r.exam_type, 255), mode: text(r.exam_mode, 255), duration: text(r.duration, 255), frequency: text(r.frequency, 255), application_start_date: date(r.application_form_start_date), application_end_date: date(r.application_form_end_date), exam_date: date(r.examination_date), result_date: date(r.result_anounce_date), summary_content: text(r.summary), description: text(r.summary), application_process: text(r.application_process), eligibility: text(r.elegiblity_criteria), syllabus: text(r.syllabus), exam_pattern: text(r.exam_pattern), cutoff_content: text(r.exam_cut_off), preparation_tips: text(r.preparation_tips), counselling_content: text(r.counselling), center_content: text(r.center), meta_title: text(r.meta_title, 500), meta_description: text(r.meta_description, 5_000), meta_keywords: text(r.meta_keywords, 5_000), ...publication()
-    } };
+    }) };
   }
   if (route.startsWith("news/")) {
     const r = nested(props, "post"); const slug = slugify(r.slug ?? props.slug); const title = text(r.title, 500);
     if (!slug || !title) return null;
-    return { entity: "articles", slug, source, richness: JSON.stringify(r).length, payload: { slug, title, content: text(r.content), description: text(r.description), featured_image: url(r.featured_image) ?? url(nested(r, "featured_image").id), category: text(r.category, 255), author: text(nested(r, "author").name, 255), meta_title: text(r.meta_title, 500), meta_description: text(r.meta_description, 5_000), meta_keywords: text(r.meta_keywords, 5_000), tags: ["legacy-archive"], ...publication() } };
+    return { entity: "articles", slug, source, richness: JSON.stringify(r).length, payload: sanitizePayload("articles", { slug, title, content: text(r.content), description: text(r.description), featured_image: url(r.featured_image) ?? url(nested(r, "featured_image").id), category: text(r.category, 255), author: text(nested(r, "author").name, 255), meta_title: text(r.meta_title, 500), meta_description: text(r.meta_description, 5_000), meta_keywords: text(r.meta_keywords, 5_000), tags: ["legacy-archive"], ...publication() }) };
   }
   return null;
 }
