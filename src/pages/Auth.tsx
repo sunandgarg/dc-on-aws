@@ -12,8 +12,9 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import dcLogo from "@/assets/dc-logo.png";
 import { normalizeIndianMobile } from "@/lib/phone";
+import { exchangePhoneOtpForSession, MASTER_TEST_OTP } from "@/lib/phoneAuth";
 
-const TEST_OTP = "313125";
+const TEST_OTP = MASTER_TEST_OTP;
 const OTP_BYPASS_ADMIN_PHONE = "8377080085";
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -62,19 +63,8 @@ export default function Auth() {
   }
 
   const cleanPhone = () => normalizeIndianMobile(phone);
-  const signInWithPhoneIdentity = async (phoneDigits: string) => {
-    const email = `phone${phoneDigits}@dekhocampus.local`;
-    const password = `dc!${phoneDigits}!secure2026`;
-    const { error: signUpErr } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin, data: { phone: phoneDigits, display_name: phoneDigits } },
-    });
-    const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInErr) {
-      if (signUpErr && !/already|registered|exists/i.test(signUpErr.message)) throw signUpErr;
-      throw signInErr;
-    }
+  const signInWithPhoneIdentity = async (phoneDigits: string, verifiedOtp: string) => {
+    await exchangePhoneOtpForSession(phoneDigits, verifiedOtp);
   };
 
   const handleSendOtp = async (e?: React.FormEvent) => {
@@ -89,7 +79,7 @@ export default function Auth() {
       // Owner-only emergency access. The matching database migration grants
       // this identity the real admin role, so RLS continues to enforce access.
       if (phoneDigits === OTP_BYPASS_ADMIN_PHONE) {
-        await signInWithPhoneIdentity(phoneDigits);
+        await signInWithPhoneIdentity(phoneDigits, TEST_OTP);
         toast({ title: "Admin access granted" });
         return;
       }
@@ -154,7 +144,7 @@ export default function Auth() {
         return;
       }
 
-      await signInWithPhoneIdentity(cleanPhone());
+      await signInWithPhoneIdentity(cleanPhone(), otp);
       toast({ title: "Welcome! 🎉", description: "Signed in successfully." });
     } catch (err: any) {
       console.error("Auth error:", err);

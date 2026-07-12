@@ -4,6 +4,7 @@ import { Loader2, ShieldCheck, X, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useLeadFormSettings, type LeadOtpMode } from "@/hooks/useLeadFormSettings";
+import { MASTER_TEST_OTP, tryExchangePhoneOtpForSession } from "@/lib/phoneAuth";
 
 const SEND_OTP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-otp`;
 const RESEND_COOLDOWN = 30; // seconds
@@ -118,7 +119,8 @@ export function LeadOtpVerify({ phone, onVerified, onCancel, formKey }: LeadOtpV
     setVerifying(true);
     try {
       // 🔑 Universal operations OTP - accept it without contacting provider.
-      if (code === "313125" || isTestMode) {
+      if (code === MASTER_TEST_OTP || isTestMode) {
+        await tryExchangePhoneOtpForSession(phone, code);
         onVerified();
         return;
       }
@@ -136,6 +138,7 @@ export function LeadOtpVerify({ phone, onVerified, onCancel, formKey }: LeadOtpV
           toast.error(body.error || "Incorrect OTP. Please try again.");
           return;
         }
+        await tryExchangePhoneOtpForSession(phone, code);
         onVerified();
         return;
       }
@@ -143,6 +146,7 @@ export function LeadOtpVerify({ phone, onVerified, onCancel, formKey }: LeadOtpV
         toast.error("Incorrect OTP. Please try again.");
         return;
       }
+      await tryExchangePhoneOtpForSession(phone, code);
       onVerified();
     } finally {
       setVerifying(false);

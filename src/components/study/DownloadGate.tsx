@@ -12,6 +12,7 @@ import { useUserProfile } from "@/hooks/useUserProfile";
 import { getPrefillCookie, savePrefillCookie } from "@/components/CookieConsent";
 import { IITAlumniBadge } from "@/components/IITAlumniBadge";
 import { normalizeIndianMobile } from "@/lib/phone";
+import { tryExchangePhoneOtpForSession } from "@/lib/phoneAuth";
 
 const LEAD_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-lead`;
 const OTP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/study-otp`;
@@ -144,6 +145,7 @@ export function DownloadGate({ open, onOpenChange, fileUrl, fileName, source, me
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.success) throw new Error(json.error || "Invalid OTP");
+      await tryExchangePhoneOtpForSession(form.phone, otp);
 
       // Save lead with otp_verified=true
       await fetch(LEAD_URL, {
