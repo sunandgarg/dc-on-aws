@@ -31,6 +31,35 @@ For Google sign-in, add the Vercel production URL and preview URL to Supabase
 Authentication → URL Configuration, then enable Google in Authentication →
 Providers using its OAuth client credentials.
 
+## Legacy content migration
+
+`npm run import:static` imports the public pre-rendered college, course, exam,
+and article data from the archived site. It deliberately excludes leads, user
+accounts, passwords, and any other personal data. Existing Supabase slugs are
+never overwritten: every collision is written to the JSON report.
+
+Run a read-only audit first:
+
+```sh
+npm run import:static -- --content-root "/path/to/.next/server/pages" \
+  --report reports/legacy-static-import-report.json
+```
+
+To import, use the **Supabase service-role key only in your local terminal**.
+Do not put this key in Vercel, a browser `.env`, or GitHub. Imports are drafts
+by default, so old admission and exam information must be reviewed before it
+becomes public. Add `--publish` only after review. `--mirror-assets` downloads
+only HTTPS files from the known legacy AWS/CloudFront hosts into Supabase
+Storage; failed files retain their original public URL and are listed in the
+report.
+
+```sh
+SUPABASE_URL="https://kozdctbbvrnyddlftmvf.supabase.co" \
+SUPABASE_SERVICE_ROLE_KEY="your_service_role_key" \
+npm run import:static -- --content-root "/path/to/.next/server/pages" \
+  --apply --mirror-assets --report reports/legacy-static-import-report.json
+```
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID

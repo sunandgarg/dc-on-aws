@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "postbuild": "tsx scripts/generate-sitemap.ts",
     "deploy:prod": "bash scripts/deploy-prod.sh",
-    "import:legacy": "tsx scripts/import-legacy-directus.ts"
+    "import:legacy": "tsx scripts/import-legacy-directus.ts",
+    "import:static": "tsx scripts/import-legacy-static.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
