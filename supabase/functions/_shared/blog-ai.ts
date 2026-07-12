@@ -31,7 +31,12 @@ export async function decryptBlogSecret(value: string, serviceRoleKey: string) {
 
 export async function loadBlogAiConfig(admin: any, serviceRoleKey: string): Promise<BlogAiConfig> {
   const { data, error } = await admin.from("blog_ai_provider_settings").select("*").eq("id", "default").maybeSingle();
-  if (error) throw error;
+  if (error) {
+    if (String(error.message || "").includes("relation") && String(error.message || "").includes("blog_ai_provider_settings")) {
+      throw new Error("Blog AI settings table is missing in Supabase. Run the latest Supabase database migrations, then open Admin - AI Providers and save the blog keys again.");
+    }
+    throw error;
+  }
   return {
     claudeKey: await decryptBlogSecret(data?.claude_api_key_ciphertext || "", serviceRoleKey),
     openaiKey: await decryptBlogSecret(data?.openai_api_key_ciphertext || "", serviceRoleKey),
@@ -83,4 +88,3 @@ export async function generateAndUploadBlogCover(admin: any, config: BlogAiConfi
   if (error) throw error;
   return admin.storage.from("admin-uploads").getPublicUrl(path).data.publicUrl;
 }
-

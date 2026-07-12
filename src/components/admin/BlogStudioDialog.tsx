@@ -33,7 +33,8 @@ export function BlogStudioDialog({ onSaved }: { onSaved?: () => void }) {
       setDraft(next);
       setSelected(new Set((next.entity_suggestions || []).map(item => `${item.entity_type}:${item.entity_slug}`)));
     } catch (error: any) {
-      toast.error(error.message || "Blog generation failed");
+      const message = error?.context?.error || error?.message || "Blog generation failed";
+      toast.error(message);
     } finally { setBusy(false); }
   };
 

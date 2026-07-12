@@ -1,6 +1,9 @@
 DROP POLICY IF EXISTS "Public manage blog auto agent settings" ON public.blog_auto_agent_settings;
 DROP POLICY IF EXISTS "Public manage blog research sources" ON public.blog_research_sources;
 DROP POLICY IF EXISTS "Public manage blog auto agent runs" ON public.blog_auto_agent_runs;
+DROP POLICY IF EXISTS "Admins manage blog auto agent settings" ON public.blog_auto_agent_settings;
+DROP POLICY IF EXISTS "Admins manage blog research sources" ON public.blog_research_sources;
+DROP POLICY IF EXISTS "Admins manage blog auto agent runs" ON public.blog_auto_agent_runs;
 
 CREATE POLICY "Admins manage blog auto agent settings"
   ON public.blog_auto_agent_settings

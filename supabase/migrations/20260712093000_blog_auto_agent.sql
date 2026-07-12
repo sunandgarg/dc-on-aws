@@ -59,6 +59,13 @@ ALTER TABLE public.blog_auto_agent_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.blog_research_sources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.blog_auto_agent_runs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Public read blog auto agent settings" ON public.blog_auto_agent_settings;
+DROP POLICY IF EXISTS "Public manage blog auto agent settings" ON public.blog_auto_agent_settings;
+DROP POLICY IF EXISTS "Public read blog research sources" ON public.blog_research_sources;
+DROP POLICY IF EXISTS "Public manage blog research sources" ON public.blog_research_sources;
+DROP POLICY IF EXISTS "Public read blog auto agent runs" ON public.blog_auto_agent_runs;
+DROP POLICY IF EXISTS "Public manage blog auto agent runs" ON public.blog_auto_agent_runs;
+
 CREATE POLICY "Public read blog auto agent settings" ON public.blog_auto_agent_settings FOR SELECT USING (true);
 CREATE POLICY "Public manage blog auto agent settings" ON public.blog_auto_agent_settings FOR ALL USING (true) WITH CHECK (true);
 
