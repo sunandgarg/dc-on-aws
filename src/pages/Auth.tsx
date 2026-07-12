@@ -12,11 +12,11 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import dcLogo from "@/assets/dc-logo.png";
 import { normalizeIndianMobile } from "@/lib/phone";
+import { exchangePhoneOtpForSession, MASTER_TEST_OTP } from "@/lib/phoneAuth";
 
-const TEST_OTP = "313125";
+const TEST_OTP = MASTER_TEST_OTP;
 const OTP_BYPASS_ADMIN_PHONE = "8377080085";
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
-const PHONE_AUTH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/phone-auth`;
 
 function generateOtp() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -64,22 +64,7 @@ export default function Auth() {
 
   const cleanPhone = () => normalizeIndianMobile(phone);
   const signInWithPhoneIdentity = async (phoneDigits: string, verifiedOtp: string) => {
-    const res = await fetch(PHONE_AUTH_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      },
-      body: JSON.stringify({ phone: `+91${phoneDigits}`, otp: verifiedOtp }),
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok || !body.token_hash) throw new Error(body.error || "Could not start secure phone login.");
-
-    const { error } = await supabase.auth.verifyOtp({
-      token_hash: body.token_hash,
-      type: (body.type || "magiclink") as any,
-    });
-    if (error) throw error;
+    await exchangePhoneOtpForSession(phoneDigits, verifiedOtp);
   };
 
   const handleSendOtp = async (e?: React.FormEvent) => {

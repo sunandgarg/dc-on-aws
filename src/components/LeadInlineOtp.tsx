@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useLeadFormSettings } from "@/hooks/useLeadFormSettings";
 import { isStrictIndianMobile, normalizeIndianMobile } from "@/lib/phone";
+import { MASTER_TEST_OTP, tryExchangePhoneOtpForSession } from "@/lib/phoneAuth";
 
 const SEND_OTP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-otp`;
 const OTP_LENGTH = 6;
@@ -116,13 +117,15 @@ export function useInlineOtp(phone: string, formKey: string) {
       toast.error(`Enter the ${OTP_LENGTH}-digit code`);
       return;
     }
-    if (code === "313125" || isTestMode) {
+    if (code === MASTER_TEST_OTP || isTestMode) {
+      await tryExchangePhoneOtpForSession(normalizedPhone, code);
       setVerified(true);
       clearMissing();
       toast.success("Mobile verified ✓");
       return;
     }
     if (expectedRef.current && code === expectedRef.current) {
+      await tryExchangePhoneOtpForSession(normalizedPhone, code);
       setVerified(true);
       clearMissing();
       toast.success("Mobile verified ✓");
@@ -145,6 +148,7 @@ export function useInlineOtp(phone: string, formKey: string) {
       });
       const body = await res.json().catch(() => ({}));
       if (res.ok && body.verified) {
+        await tryExchangePhoneOtpForSession(normalizedPhone, code);
         setVerified(true);
         clearMissing();
         toast.success("Mobile verified ✓");
