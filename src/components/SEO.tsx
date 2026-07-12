@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { absoluteCanonical } from "@/lib/constant";
 
 interface SEOProps {
   title?: string;
@@ -23,6 +24,8 @@ export function SEO({
   jsonLd,
 }: SEOProps) {
   useEffect(() => {
+    const canonicalUrl = absoluteCanonical(canonical);
+    const ogImageUrl = absoluteCanonical(ogImage);
     if (title) document.title = title;
 
     const setNameMeta = (name: string, content?: string) => {
@@ -50,28 +53,29 @@ export function SEO({
     if (description) setNameMeta("description", description);
     if (keywords) setNameMeta("keywords", keywords);
 
-    if (canonical) {
+    if (canonicalUrl) {
       let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
       if (!link) {
         link = document.createElement("link");
         link.rel = "canonical";
         document.head.appendChild(link);
       }
-      link.href = canonical;
+      link.href = canonicalUrl;
     }
 
     // OpenGraph
     if (title) setPropMeta("og:title", title);
     if (description) setPropMeta("og:description", description);
-    if (canonical) setPropMeta("og:url", canonical);
+    if (canonicalUrl) setPropMeta("og:url", canonicalUrl);
     setPropMeta("og:type", ogType);
-    if (ogImage) setPropMeta("og:image", ogImage);
+    if (ogImageUrl) setPropMeta("og:image", ogImageUrl);
 
     // Twitter
     setNameMeta("twitter:card", twitterCard);
     if (title) setNameMeta("twitter:title", title);
     if (description) setNameMeta("twitter:description", description);
-    if (ogImage) setNameMeta("twitter:image", ogImage);
+    if (canonicalUrl) setNameMeta("twitter:url", canonicalUrl);
+    if (ogImageUrl) setNameMeta("twitter:image", ogImageUrl);
 
     // JSON-LD
     const id = "ld-json-page";

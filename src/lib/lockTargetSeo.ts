@@ -4,7 +4,9 @@
  * so each trending target ranks for the actual queries students search.
  */
 
-const SITE = "https://ui.dekhocampus.com";
+import { SITE_URL } from "@/lib/constant";
+
+const SITE = SITE_URL;
 const BRAND = "DekhoCampus";
 const YEAR = new Date().getFullYear() + 1; // forward-looking SEO
 

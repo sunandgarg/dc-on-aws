@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "postbuild": "tsx scripts/generate-sitemap.ts",
+    "postbuild": "tsx scripts/generate-sitemap.ts && tsx scripts/apply-site-metadata.ts",
     "deploy:prod": "bash scripts/deploy-prod.sh",
     "import:legacy": "tsx scripts/import-legacy-directus.ts",
     "import:static": "tsx scripts/import-legacy-static.ts"

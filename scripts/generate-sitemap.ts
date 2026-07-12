@@ -12,8 +12,9 @@ import { writeFileSync } from "fs";
 import { resolve } from "path";
 import { createClient } from "@supabase/supabase-js";
 import { eligibilityComboSlugs, predictorComboSlugs } from "../src/lib/seoSubSlugs";
+import { SITE_URL } from "../src/lib/constant";
 
-const BASE_URL = process.env.SITEMAP_BASE_URL || "https://www.dekhocampus.com";
+const BASE_URL = process.env.SITEMAP_BASE_URL || SITE_URL;
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 const SUPABASE_ANON =
   process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||

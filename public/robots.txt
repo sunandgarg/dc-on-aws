@@ -27,4 +27,4 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
-Sitemap: https://ui.dekhocampus.com/sitemap.xml
+Sitemap: https://www.dekhocampus.in/sitemap.xml
