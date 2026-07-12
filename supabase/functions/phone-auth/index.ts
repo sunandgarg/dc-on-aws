@@ -67,22 +67,67 @@ async function verifyStoredOtp(admin: any, phone: string, otp: string) {
 async function ensurePhoneUser(admin: any, phone: string) {
   const email = emailForPhone(phone);
   const password = passwordForPhone(phone);
+  const e164Phone = `+91${phone}`;
   const metadata = { phone, display_name: phone, phone_verified: true, auth_provider: "phone_otp" };
 
-  const { error } = await admin.auth.admin.createUser({
+  const { data: created, error } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
-    phone: `+91${phone}`,
+    phone: e164Phone,
     phone_confirm: true,
     user_metadata: metadata,
   });
 
-  if (error && !/already|registered|exists|duplicate/i.test(error.message || "")) {
+  if (!error) {
+    return { email, password, userId: created?.user?.id };
+  }
+
+  if (!/already|registered|exists|duplicate/i.test(error.message || "")) {
     throw error;
   }
 
-  return { email, password };
+  const { data: usersData, error: listError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (listError) throw listError;
+
+  const existing = (usersData?.users || []).find((user: any) => {
+    const userEmail = String(user.email || "").toLowerCase();
+    const userPhone = normalizeIndianMobile(user.phone || "");
+    return userEmail === email.toLowerCase() || userPhone === phone;
+  });
+
+  if (!existing?.id) {
+    throw error;
+  }
+
+  const { error: updateError } = await admin.auth.admin.updateUserById(existing.id, {
+    email,
+    phone: e164Phone,
+    password,
+    user_metadata: { ...(existing.user_metadata || {}), ...metadata },
+  });
+
+  if (updateError) throw updateError;
+
+  return { email, password, userId: existing.id };
+}
+
+async function generateSessionFallback(admin: any, email: string, redirectTo?: string) {
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email,
+    options: { redirectTo: redirectTo || "https://www.dekhocampus.in/auth" },
+  });
+
+  if (error) throw error;
+
+  const tokenHash = data?.properties?.hashed_token;
+  if (!tokenHash) throw new Error("Could not create login token");
+
+  return {
+    token_hash: tokenHash,
+    type: data?.properties?.verification_type || "magiclink",
+  };
 }
 
 Deno.serve(async (req) => {
@@ -141,8 +186,20 @@ Deno.serve(async (req) => {
 
     const identity = await ensurePhoneUser(admin, phone);
     const authClient = createClient(supabaseUrl, anon);
-    const { data: sessionData, error: signInError } = await authClient.auth.signInWithPassword(identity);
-    if (signInError) return json({ error: signInError.message, verified: true }, 400);
+    const { data: sessionData, error: signInError } = await authClient.auth.signInWithPassword({
+      email: identity.email,
+      password: identity.password,
+    });
+
+    if (signInError) {
+      const fallback = await generateSessionFallback(admin, identity.email, body.redirectTo);
+      return json({
+        success: true,
+        verified: true,
+        email: identity.email,
+        ...fallback,
+      });
+    }
 
     return json({
       success: true,
