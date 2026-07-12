@@ -1,0 +1,220 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
+import { geminiGenerate, GEMINI_MODEL } from "./gemini.ts";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-blog-agent-secret",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const DEFAULT_SOURCES = [
+  { name: "Shiksha", url: "https://www.shiksha.com/news", source_type: "competitor" },
+  { name: "Careers360", url: "https://www.careers360.com/articles", source_type: "competitor" },
+  { name: "KollegeApply", url: "https://news.kollegeapply.com", source_type: "competitor" },
+  { name: "CollegeDunia", url: "https://collegedunia.com/news", source_type: "competitor" },
+  { name: "CollegeDekho", url: "https://www.collegedekho.com/news", source_type: "competitor" },
+  { name: "PaGaLGuY", url: "https://www.pagalguy.com/mba/articles", source_type: "competitor" },
+  { name: "DekhoCampus", url: "https://www.dekhocampus.in/news", source_type: "own" },
+];
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
+}
+
+function stripHtml(input: string) {
+  return input
+    .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function esc(value: string) {
+  return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function slugify(value: string) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 90);
+}
+
+function coverSvg(title: string, kicker: string) {
+  const words = title.split(/\s+/).slice(0, 13).join(" ");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0f172a"/><stop offset=".55" stop-color="#1d4ed8"/><stop offset="1" stop-color="#f5821f"/></linearGradient></defs><rect width="1600" height="900" fill="url(#g)"/><circle cx="1300" cy="130" r="330" fill="#fff" opacity=".09"/><circle cx="170" cy="840" r="370" fill="#fff" opacity=".08"/><text x="115" y="145" fill="#dbeafe" font-family="Arial,sans-serif" font-size="34" font-weight="700" letter-spacing="5">DEKHOCAMPUS · ${esc(kicker.toUpperCase().slice(0, 42))}</text><foreignObject x="115" y="245" width="1280" height="430"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Arial,sans-serif;color:white;font-size:78px;line-height:1.12;font-weight:850">${esc(words)}</div></foreignObject><text x="115" y="820" fill="#e0f2fe" font-family="Arial,sans-serif" font-size="30">Fresh guidance for students and parents</text></svg>`;
+}
+
+async function requireAccess(req: Request, admin: any) {
+  const configuredSecret = Deno.env.get("BLOG_AGENT_SECRET") || "";
+  const incomingSecret = req.headers.get("x-blog-agent-secret") || "";
+  if (configuredSecret && incomingSecret && incomingSecret === configuredSecret) return;
+
+  const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  if (!token) throw new Error("Authentication required");
+  const { data: userData } = await admin.auth.getUser(token);
+  if (!userData.user) throw new Error("Invalid session");
+  const { data: role } = await admin.from("user_roles").select("role").eq("user_id", userData.user.id).eq("role", "admin").limit(1).maybeSingle();
+  if (!role) throw new Error("Admin permission required");
+}
+
+async function fetchSignals(sources: any[]) {
+  const results = await Promise.allSettled(sources.map(async (source) => {
+    const response = await fetch(source.url, {
+      headers: {
+        "User-Agent": "DekhoCampus editorial research bot/1.0",
+        "Accept": "text/html,application/xhtml+xml",
+      },
+    });
+    if (!response.ok) return { ...source, ok: false, signal: `Unavailable ${response.status}` };
+    const signal = stripHtml((await response.text()).slice(0, 160000)).slice(0, 4500);
+    return { ...source, ok: true, signal };
+  }));
+  return results.map((result, index) => result.status === "fulfilled" ? result.value : { ...sources[index], ok: false, signal: "Fetch failed" });
+}
+
+async function chooseProvider(admin: any, providerName: string) {
+  const { data } = await admin.from("ai_providers").select("provider_name,base_url,api_key_encrypted,default_model");
+  return (data || []).find((p: any) => p.provider_name?.toLowerCase() === String(providerName).toLowerCase() && p.api_key_encrypted);
+}
+
+async function callModel(admin: any, providerName: string, prompt: string) {
+  const chosen = await chooseProvider(admin, providerName);
+  if (!chosen || chosen.provider_name === "gemini") {
+    return { raw: await geminiGenerate({ system: "Return valid JSON only.", prompt, json: true }) || "{}", modelUsed: `gemini:${GEMINI_MODEL}` };
+  }
+
+  const anthropic = chosen.provider_name === "anthropic" || String(chosen.base_url || "").includes("anthropic.com");
+  const response = await fetch(chosen.base_url, anthropic
+    ? { method: "POST", headers: { "x-api-key": chosen.api_key_encrypted, "anthropic-version": "2023-06-01", "Content-Type": "application/json" }, body: JSON.stringify({ model: chosen.default_model, max_tokens: 8192, system: "Return valid JSON only.", messages: [{ role: "user", content: prompt }] }) }
+    : { method: "POST", headers: { Authorization: `Bearer ${chosen.api_key_encrypted}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: chosen.default_model, messages: [{ role: "system", content: "Return valid JSON only." }, { role: "user", content: prompt }], response_format: { type: "json_object" } }) });
+
+  if (!response.ok) throw new Error(`Selected AI provider failed with ${response.status}`);
+  const data = await response.json();
+  const raw = data.choices?.[0]?.message?.content || (Array.isArray(data.content) ? data.content.map((b: any) => b.text || "").join("") : "{}");
+  return { raw, modelUsed: `${chosen.provider_name}:${chosen.default_model}` };
+}
+
+function parseJson(raw: string) {
+  const cleaned = String(raw || "{}").replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
+  return JSON.parse(cleaned);
+}
+
+async function uploadCover(admin: any, slug: string, svg: string) {
+  const path = `blog-covers/${slug}-${Date.now()}.svg`;
+  const { error } = await admin.storage.from("admin-uploads").upload(path, new Blob([svg], { type: "image/svg+xml" }), { contentType: "image/svg+xml", upsert: false });
+  if (error) return "";
+  return admin.storage.from("admin-uploads").getPublicUrl(path).data.publicUrl;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const admin = createClient(supabaseUrl, service);
+
+  let runId = "";
+  try {
+    await requireAccess(req, admin);
+    const body = await req.json().catch(() => ({}));
+    const triggerType = body.trigger_type === "schedule" ? "schedule" : "manual";
+
+    const { data: settingsRow } = await admin.from("blog_auto_agent_settings").select("*").eq("id", "default").maybeSingle();
+    const settings = {
+      enabled: false,
+      interval_minutes: 60,
+      posts_per_run: 2,
+      daily_post_cap: 12,
+      publish_status: "Published",
+      model_provider: "gemini",
+      word_limit: 1200,
+      ...(settingsRow || {}),
+      ...(body.override || {}),
+    };
+
+    if (triggerType === "schedule" && !settings.enabled) return json({ skipped: true, message: "Blog auto agent is disabled" });
+    if (triggerType === "schedule" && settings.next_run_at && new Date(settings.next_run_at).getTime() > Date.now()) {
+      return json({ skipped: true, message: "Next run time has not arrived yet", next_run_at: settings.next_run_at });
+    }
+
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+    const { data: todayArticles } = await admin.from("articles").select("id").gte("created_at", dayStart.toISOString()).contains("tags", ["auto-blog-agent"]);
+    if ((todayArticles || []).length >= settings.daily_post_cap) {
+      return json({ skipped: true, message: "Daily post cap reached", count: (todayArticles || []).length });
+    }
+
+    const { data: run } = await admin.from("blog_auto_agent_runs").insert({
+      status: "running",
+      trigger_type: triggerType,
+      interval_minutes: settings.interval_minutes,
+      model_provider: settings.model_provider,
+      word_limit: settings.word_limit,
+    }).select("id").single();
+    runId = run?.id || "";
+
+    const { data: sourceRows } = await admin.from("blog_research_sources").select("*").eq("is_active", true).order("display_order");
+    const sources = (sourceRows?.length ? sourceRows : DEFAULT_SOURCES);
+    const signals = await fetchSignals(sources);
+    const { data: existingArticles } = await admin.from("articles").select("title,slug,description,tags,created_at").order("created_at", { ascending: false }).limit(80);
+
+    const topicPrompt = `You are the DekhoCampus education-news editor. Today is ${new Date().toISOString().slice(0, 10)} in India.\n\nResearch signals from competitor and own website pages:\n${JSON.stringify(signals)}\n\nRecent DekhoCampus articles to avoid duplicates:\n${JSON.stringify(existingArticles || [])}\n\nPick the best ${settings.posts_per_run} article opportunities for Indian students and parents. Prioritise timely admissions, exams, counselling, scholarships, careers and college decisions. Do not copy competitors. Return JSON only: {topics:[{title,angle,primary_keyword,geo_focus,reason,category,tags:[...]}]}.`;
+    const topicResult = await callModel(admin, settings.model_provider, topicPrompt);
+    const topics = (parseJson(topicResult.raw).topics || []).slice(0, settings.posts_per_run);
+
+    const createdIds: string[] = [];
+    for (const topic of topics) {
+      const articlePrompt = `Create a complete original DekhoCampus article from this approved topic:\n${JSON.stringify(topic)}\n\nResearch context:\n${JSON.stringify(signals)}\n\nTarget length: ${settings.word_limit} words.\n\nReturn JSON only: {title,slug,description,content_html,meta_title,meta_description,meta_keywords,tags,entity_suggestions:[{entity_type,entity_slug,label}],research_notes,cover_kicker}.\n\nRules: optimise for SEO, GEO, AEO and student usefulness. Use plain human wording, short paragraphs, useful headings, FAQs, and small hyphen '-' only. Never copy competitor wording. Avoid fake certainty on dates, fees, cutoffs or rules. Mention official-source verification where needed. Add a final Sources section with source names or official-source guidance.`;
+      const articleResult = await callModel(admin, settings.model_provider, articlePrompt);
+      const draft = parseJson(articleResult.raw);
+      const slug = slugify(draft.slug || draft.title || topic.title);
+      const svg = coverSvg(draft.title || topic.title, draft.cover_kicker || topic.category || "Education update");
+      const featured_image = await uploadCover(admin, slug, svg);
+      const tags = Array.from(new Set([...(draft.tags || []), "auto-blog-agent"]));
+
+      const { data: article, error } = await admin.from("articles").upsert({
+        title: draft.title || topic.title,
+        slug,
+        description: draft.description || topic.angle || "",
+        content: draft.content_html || "",
+        meta_title: draft.meta_title || draft.title || topic.title,
+        meta_description: draft.meta_description || draft.description || topic.angle || "",
+        meta_keywords: draft.meta_keywords || topic.primary_keyword || "",
+        tags,
+        category: topic.category || "",
+        author: "DekhoCampus Editorial",
+        featured_image,
+        status: settings.publish_status,
+        is_active: true,
+      }, { onConflict: "slug" }).select("id").single();
+      if (error) throw error;
+      createdIds.push(article.id);
+
+      for (const suggestion of draft.entity_suggestions || []) {
+        await admin.from("article_links").upsert({ article_id: article.id, entity_type: suggestion.entity_type, entity_slug: suggestion.entity_slug }, { onConflict: "article_id,entity_type,entity_slug" });
+      }
+    }
+
+    const nextRun = new Date(Date.now() + Number(settings.interval_minutes || 60) * 60 * 1000).toISOString();
+    await admin.from("blog_auto_agent_settings").upsert({ id: "default", last_run_at: new Date().toISOString(), next_run_at: nextRun });
+    if (runId) await admin.from("blog_auto_agent_runs").update({
+      status: "completed",
+      finished_at: new Date().toISOString(),
+      sources: signals.map(({ signal, ...rest }) => rest),
+      selected_topics: topics,
+      created_article_ids: createdIds,
+      message: `Created ${createdIds.length} article(s) using ${topicResult.modelUsed}`,
+    }).eq("id", runId);
+
+    return json({ success: true, created_article_ids: createdIds, topics, next_run_at: nextRun });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (runId) await admin.from("blog_auto_agent_runs").update({ status: "failed", finished_at: new Date().toISOString(), message }).eq("id", runId);
+    return json({ error: message }, 400);
+  }
+});

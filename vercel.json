@@ -1,4 +1,7 @@
 {
+  "crons": [
+    { "path": "/api/blog-agent-cron", "schedule": "*/30 * * * *" }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
