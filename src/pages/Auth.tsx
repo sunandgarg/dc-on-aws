@@ -16,6 +16,7 @@ import { normalizeIndianMobile } from "@/lib/phone";
 const TEST_OTP = "313125";
 const OTP_BYPASS_ADMIN_PHONE = "8377080085";
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const PHONE_AUTH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/phone-auth`;
 
 function generateOtp() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -62,19 +63,23 @@ export default function Auth() {
   }
 
   const cleanPhone = () => normalizeIndianMobile(phone);
-  const signInWithPhoneIdentity = async (phoneDigits: string) => {
-    const email = `phone${phoneDigits}@dekhocampus.local`;
-    const password = `dc!${phoneDigits}!secure2026`;
-    const { error: signUpErr } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin, data: { phone: phoneDigits, display_name: phoneDigits } },
+  const signInWithPhoneIdentity = async (phoneDigits: string, verifiedOtp: string) => {
+    const res = await fetch(PHONE_AUTH_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify({ phone: `+91${phoneDigits}`, otp: verifiedOtp }),
     });
-    const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInErr) {
-      if (signUpErr && !/already|registered|exists/i.test(signUpErr.message)) throw signUpErr;
-      throw signInErr;
-    }
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.token_hash) throw new Error(body.error || "Could not start secure phone login.");
+
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: body.token_hash,
+      type: (body.type || "magiclink") as any,
+    });
+    if (error) throw error;
   };
 
   const handleSendOtp = async (e?: React.FormEvent) => {
@@ -89,7 +94,7 @@ export default function Auth() {
       // Owner-only emergency access. The matching database migration grants
       // this identity the real admin role, so RLS continues to enforce access.
       if (phoneDigits === OTP_BYPASS_ADMIN_PHONE) {
-        await signInWithPhoneIdentity(phoneDigits);
+        await signInWithPhoneIdentity(phoneDigits, TEST_OTP);
         toast({ title: "Admin access granted" });
         return;
       }
@@ -154,7 +159,7 @@ export default function Auth() {
         return;
       }
 
-      await signInWithPhoneIdentity(cleanPhone());
+      await signInWithPhoneIdentity(cleanPhone(), otp);
       toast({ title: "Welcome! 🎉", description: "Signed in successfully." });
     } catch (err: any) {
       console.error("Auth error:", err);
