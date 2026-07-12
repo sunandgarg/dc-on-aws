@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       const fakeEmail = `phone${cleanPhone}@auth.dekhocampus.in`;
       const { data, error } = await admin.auth.admin.createUser({
         email: fakeEmail, password, email_confirm: true,
-        phone: cleanPhone,
+        phone: `+91${cleanPhone}`,
         user_metadata: { phone: cleanPhone, display_name, invited_by: ures.user.id },
       });
       if (error && !`${error.message}`.includes("already")) return json({ error: error.message }, 400);
