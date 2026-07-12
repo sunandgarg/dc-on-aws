@@ -13,9 +13,10 @@ import { getPrefillCookie, savePrefillCookie } from "@/components/CookieConsent"
 import { IITAlumniBadge } from "@/components/IITAlumniBadge";
 import { normalizeIndianMobile } from "@/lib/phone";
 import { tryExchangePhoneOtpForSession } from "@/lib/phoneAuth";
+import { functionUrl } from "@/lib/backendMode";
 
-const LEAD_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-lead`;
-const OTP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/study-otp`;
+const LEAD_URL = functionUrl("save-lead");
+const OTP_URL = functionUrl("study-otp");
 
 // NOTE: Free-skip bypass intentionally removed. Every download MUST pass through OTP.
 // Do NOT reintroduce a "first one free" pattern - project rule.

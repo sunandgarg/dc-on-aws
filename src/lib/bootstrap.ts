@@ -2,6 +2,7 @@
 // first paint. Kicked off at module-import time so the network round-trip
 // happens IN PARALLEL with React's first render, not after.
 import { QueryClient } from "@tanstack/react-query";
+import { functionUrl } from "@/lib/backendMode";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -28,7 +29,7 @@ export function ensureBootstrap(): Promise<BootstrapPayload | null> {
   fetchedAt = Date.now();
   payloadPromise = (async () => {
     try {
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/bootstrap`, {
+      const res = await fetch(functionUrl("bootstrap"), {
         headers: { apikey: ANON, Authorization: `Bearer ${ANON}` },
       });
       if (!res.ok) return null;

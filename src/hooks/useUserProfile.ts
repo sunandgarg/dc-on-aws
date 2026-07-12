@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { isSyntheticPhoneEmail } from "@/lib/authIdentity";
 
 export interface UserProfilePrefill {
   name: string;
@@ -30,8 +31,7 @@ export function useUserProfile() {
         .eq("user_id", user.id)
         .maybeSingle();
       const rawEmail = data?.email || user.email || "";
-      // Hide synthetic OTP-login emails (phoneXXXXX@dekhocampus.local) - those are placeholders, not real
-      const realEmail = rawEmail.endsWith("@dekhocampus.local") ? "" : rawEmail;
+      const realEmail = isSyntheticPhoneEmail(rawEmail) ? "" : rawEmail;
       return {
         name: data?.display_name || user.user_metadata?.display_name || user.user_metadata?.full_name || "",
         email: realEmail,

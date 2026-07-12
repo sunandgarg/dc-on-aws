@@ -168,7 +168,7 @@ export default function News() {
   const clearTag = () => navigate("/news", { replace: true });
 
   // Pinned articles - separate, long-cached query. Doesn't depend on filters/page/search.
-  const { data: pinned = [] } = useQuery({
+  const { data: pinnedData = [] } = useQuery<Article[]>({
     queryKey: ["news-pinned"],
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -185,6 +185,9 @@ export default function News() {
     },
   });
 
+  // A stale cache or a defensive test mock can return a non-array here. Keep
+  // the news page renderable instead of crashing on `.map()`.
+  const pinned = Array.isArray(pinnedData) ? pinnedData : [];
   const pinnedIds = useMemo(() => pinned.map(p => p.id), [pinned]);
   const hasFilters = !!(tagParam || activeCategory || debouncedSearch);
 

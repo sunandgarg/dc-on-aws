@@ -10,14 +10,15 @@ import ReactMarkdown from "react-markdown";
 import { ChatMarkdown } from "@/components/AIChatFullScreen";
 import { toast } from "sonner";
 import { AILeadForm } from "@/components/AILeadForm";
+import { functionUrl } from "@/lib/backendMode";
 
 type Message = {
   role: "user" | "assistant" | "system";
   content: string;
 };
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-counselor`;
-const LEAD_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-lead`;
+const CHAT_URL = functionUrl("ai-counselor");
+const LEAD_URL = functionUrl("save-lead");
 
 const DEFAULT_SUGGESTIONS = [
   "Top 5 engineering colleges in India",

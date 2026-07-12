@@ -67,7 +67,7 @@ const FALLBACK_TILES: Module[] = [
 const HIDDEN_KEYS = new Set(["compare-colleges"]);
 
 export function AlsoCheckSection({ className = "", variant = "grid" }: { className?: string; variant?: "grid" | "strip" }) {
-  const { data: dbModules = [] } = useQuery({
+  const { data: dbModulesData = [] } = useQuery<Module[]>({
     queryKey: ["also-check-modules"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -80,6 +80,11 @@ export function AlsoCheckSection({ className = "", variant = "grid" }: { classNa
     },
     staleTime: 5 * 60_000,
   });
+
+  // Query cache hydration and test mocks can return a non-array. Treat it as
+  // an empty result instead of making a section crash the whole page.
+  const dbModules = Array.isArray(dbModulesData) ? dbModulesData : [];
+  const carousel = useCarouselNav();
 
   // Merge DB + fallback, keyed by `key` - fallback only adds what's missing.
   const filteredDb = dbModules.filter((m) => !HIDDEN_KEYS.has(m.key));
@@ -95,7 +100,7 @@ export function AlsoCheckSection({ className = "", variant = "grid" }: { classNa
   // Compact horizontal strip - designed for Gen Z mid-page placement.
   // Shows 3 cards per view, swipe to see more, with dot pagination.
   if (variant === "strip") {
-    const { ref, pages, active, canLeft, canRight, scrollByDir, goToPage } = useCarouselNav();
+    const { ref, pages, active, canLeft, canRight, scrollByDir, goToPage } = carousel;
     return (
       <section className={`mt-5 ${className}`} aria-label="Also check">
         <div className="flex items-center justify-between mb-2.5 px-1">
@@ -150,7 +155,7 @@ export function AlsoCheckSection({ className = "", variant = "grid" }: { classNa
   // Grid carousel - single row of cards, swipeable. Horizontal scroll is
   // isolated from the page (overscroll-contain + touch-action pan-x/pan-y so
   // diagonal gestures pass vertical scroll through to the page).
-  const { ref, pages, active, canLeft, canRight, scrollByDir, goToPage } = useCarouselNav();
+  const { ref, pages, active, canLeft, canRight, scrollByDir, goToPage } = carousel;
 
   return (
     <section className={`mt-10 px-4 md:px-0 ${className}`} aria-label="Also check">
@@ -220,4 +225,3 @@ export function AlsoCheckSection({ className = "", variant = "grid" }: { classNa
 
 
 export default AlsoCheckSection;
-

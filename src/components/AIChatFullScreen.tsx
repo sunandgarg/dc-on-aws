@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { AIDisclaimer } from "@/components/AIDisclaimer";
+import { functionUrl } from "@/lib/backendMode";
 
 type Message = { role: "user" | "assistant"; content: string };
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-counselor`;
+const CHAT_URL = functionUrl("ai-counselor");
 const DC_HEADING = "### ✅ Apply directly on DekhoCampus";
 
 interface AIChatFullScreenProps {

@@ -20,6 +20,7 @@ import { DashboardApplications } from "@/components/dashboard/DashboardApplicati
 import { DashboardSubUsers } from "@/components/dashboard/DashboardSubUsers";
 import { DashboardFavorites } from "@/components/dashboard/DashboardFavorites";
 import { DashboardTargets } from "@/components/dashboard/DashboardTargets";
+import { isSyntheticPhoneEmail } from "@/lib/authIdentity";
 
 const ALL_TABS = [
   { id: "dashboard", label: "Dashboard", icon: Home },
@@ -77,7 +78,7 @@ export default function UserDashboard() {
     (user.user_metadata as any)?.display_name ||
     (user.user_metadata as any)?.full_name ||
     "";
-  const emailLocal = user.email && !user.email.endsWith("@dekhocampus.local")
+  const emailLocal = user.email && !isSyntheticPhoneEmail(user.email)
     ? user.email.split("@")[0]
     : "";
   const hasName = !!rawName.trim();

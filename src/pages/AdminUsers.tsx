@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppRole } from "@/lib/rbac";
 import { PermissionEditor } from "@/components/admin/PermissionEditor";
 import { TeamPanel } from "@/components/admin/TeamPanel";
+import { isSyntheticPhoneEmail } from "@/lib/authIdentity";
 
 import { CSVTools } from "@/components/CSVTools";
 const ASSIGNABLE_ROLES: AppRole[] = ["admin", "manager", "editor", "contributor"];
@@ -70,7 +71,7 @@ export default function AdminUsers() {
         ...p,
         roles: rolesMap.get(p.user_id) || [],
         leadCount: p.phone ? (leadCountByPhone.get(p.phone) || 0) : 0,
-        loginSource: p.email?.endsWith("@dekhocampus.local") ? "Mobile OTP" : (p.email ? "Google / Email" : "Unknown"),
+        loginSource: isSyntheticPhoneEmail(p.email) ? "Mobile OTP" : (p.email ? "Google / Email" : "Unknown"),
         applicationCount: appsByUser.get(p.user_id) || 0,
       }));
     },
@@ -137,7 +138,7 @@ export default function AdminUsers() {
                     </div>
                     <div className="text-xs text-muted-foreground flex flex-wrap gap-3">
                       {u.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {u.phone}</span>}
-                      {u.email && !u.email.endsWith("@dekhocampus.local") && <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {u.email}</span>}
+                      {u.email && !isSyntheticPhoneEmail(u.email) && <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {u.email}</span>}
                       {(u.city || u.state) && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {[u.city, u.state].filter(Boolean).join(", ")}</span>}
                       <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(u.created_at).toLocaleDateString()}</span>
                     </div>

@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useDashboardData";
 import { Label } from "@/components/ui/label";
 import { Phone, Mail, Hash, ShieldCheck } from "lucide-react";
+import { isSyntheticPhoneEmail } from "@/lib/authIdentity";
 
 function genAccountId(seed: string) {
   // Stable pseudo-random suffix from user_id
@@ -16,7 +17,7 @@ export function DashboardSettings() {
   const { data: profile } = useProfile() as any;
 
   const phone = profile?.phone || user?.user_metadata?.phone || "";
-  const email = user?.email && !user.email.endsWith("@dekhocampus.local") ? user.email : "";
+  const email = user?.email && !isSyntheticPhoneEmail(user.email) ? user.email : "";
   const isGoogleUser = !phone && !!email;
 
   const accountId = phone

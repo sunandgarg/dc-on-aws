@@ -13,6 +13,7 @@ import { Footer } from "@/components/Footer";
 import dcLogo from "@/assets/dc-logo.png";
 import { normalizeIndianMobile } from "@/lib/phone";
 import { exchangePhoneOtpForSession, MASTER_TEST_OTP } from "@/lib/phoneAuth";
+import { functionUrl } from "@/lib/backendMode";
 
 const TEST_OTP = MASTER_TEST_OTP;
 const OTP_BYPASS_ADMIN_PHONE = "8377080085";
@@ -89,7 +90,7 @@ export default function Auth() {
       sentOtpRef.current = code;
       saveSentOtp(phoneDigits, code);
 
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-otp`, {
+      const res = await fetch(functionUrl("send-otp"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -127,7 +128,7 @@ export default function Auth() {
       let verified = otp === TEST_OTP || (sentOtpRef.current.length === 6 && otp === sentOtpRef.current) || (stored.length === 6 && otp === stored);
       if (!verified) {
         try {
-          const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-otp`, {
+          const res = await fetch(functionUrl("send-otp"), {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

@@ -1,5 +1,6 @@
 import { PermGate } from "@/components/PermGate";
 import { AIGenerateDialog } from "@/components/admin/AIGenerateDialog";
+import { BlogStudioDialog } from "@/components/admin/BlogStudioDialog";
 import { useState } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { useAllDbArticles, useSaveArticle, useDeleteArticle, type DbArticle } from "@/hooks/useArticlesData";
@@ -99,7 +100,7 @@ export default function AdminArticles() {
 
   return (
     <AdminLayout title="Articles Manager">
-      <div className="mb-3"><AIGenerateDialog entityType="articles" table="articles" /></div>
+      <div className="mb-3 flex flex-wrap gap-2"><BlogStudioDialog onSaved={() => { void refetchArticles(); }} /><AIGenerateDialog entityType="articles" table="articles" /></div>
       <div className="flex flex-col sm:flex-row gap-3 mb-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

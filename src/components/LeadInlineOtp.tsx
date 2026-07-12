@@ -6,8 +6,9 @@ import { toast } from "sonner";
 import { useLeadFormSettings } from "@/hooks/useLeadFormSettings";
 import { isStrictIndianMobile, normalizeIndianMobile } from "@/lib/phone";
 import { MASTER_TEST_OTP, tryExchangePhoneOtpForSession } from "@/lib/phoneAuth";
+import { functionUrl } from "@/lib/backendMode";
 
-const SEND_OTP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-otp`;
+const SEND_OTP_URL = functionUrl("send-otp");
 const OTP_LENGTH = 6;
 const RESEND = 45;
 

@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { IITAlumniBadge } from "@/components/IITAlumniBadge";
 import { isValidIndianMobile, normalizeIndianMobile } from "@/lib/phone";
+import { functionUrl } from "@/lib/backendMode";
 
-const LEAD_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-lead`;
+const LEAD_URL = functionUrl("save-lead");
 
 export function FixedCounsellingCTA() {
   const [expanded, setExpanded] = useState(false);

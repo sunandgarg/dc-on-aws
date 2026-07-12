@@ -11,11 +11,12 @@
  */
 import { getPrefillCookie, savePrefillCookie } from "@/components/CookieConsent";
 import { normalizeIndianMobile } from "@/lib/phone";
+import { functionUrl } from "@/lib/backendMode";
 
 const LAST_LEAD_TS_KEY = "dc_last_lead_ts_v1";
 export const LEAD_SILENT_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
 
-const LEAD_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-lead`;
+const LEAD_URL = functionUrl("save-lead");
 
 export function markLeadSubmitted(ts: number = Date.now()) {
   try { localStorage.setItem(LAST_LEAD_TS_KEY, String(ts)); } catch { /* noop */ }

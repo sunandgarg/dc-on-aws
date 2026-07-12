@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useLeadFormSettings, type LeadOtpMode } from "@/hooks/useLeadFormSettings";
 import { MASTER_TEST_OTP, tryExchangePhoneOtpForSession } from "@/lib/phoneAuth";
+import { functionUrl } from "@/lib/backendMode";
 
-const SEND_OTP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-otp`;
+const SEND_OTP_URL = functionUrl("send-otp");
 const RESEND_COOLDOWN = 30; // seconds
 const OTP_LENGTH = 6;
 

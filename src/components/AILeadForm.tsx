@@ -16,8 +16,9 @@ import { UrgencyHooks } from "@/components/UrgencyHooks";
 import { useInlineOtp, isValidIndianMobile, PHONE_HINT, sanitizeIndianMobile } from "@/components/LeadInlineOtp";
 import { ProgramModeToggle, type ProgramMode } from "@/components/ProgramModeToggle";
 import { detectDeviceType, inferSourceCategory } from "@/lib/leadTracking";
+import { functionUrl } from "@/lib/backendMode";
 
-const LEAD_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-lead`;
+const LEAD_URL = functionUrl("save-lead");
 
 const courseOptions = [
   "B.Tech / B.E.", "MBBS / BDS", "B.Com / BBA / MBA", "B.Sc / M.Sc",

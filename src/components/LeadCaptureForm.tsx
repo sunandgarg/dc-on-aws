@@ -17,6 +17,7 @@ import { useInlineOtp, isValidIndianMobile, PHONE_HINT, sanitizeIndianMobile } f
 import { ProgramModeToggle, type ProgramMode } from "@/components/ProgramModeToggle";
 import { detectDeviceType, inferSourceCategory } from "@/lib/leadTracking";
 import { trackEvent, trackLeadConversion } from "@/lib/analytics";
+import { functionUrl } from "@/lib/backendMode";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -33,7 +34,7 @@ interface LeadCaptureFormProps {
   simple?: boolean;
 }
 
-const LEAD_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-lead`;
+const LEAD_URL = functionUrl("save-lead");
 
 const courseOptions = [
   "B.Tech / B.E.", "MBBS / BDS", "B.Com / BBA / MBA", "B.Sc / M.Sc",

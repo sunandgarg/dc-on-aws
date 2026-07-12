@@ -7,8 +7,21 @@ export async function exchangePhoneOtpForSession(phoneDigits: string, verifiedOt
     body: { phone: `+91${phoneDigits}`, otp: verifiedOtp },
   });
 
-  if (error || !data?.token_hash) {
+  if (error || data?.error) {
     throw new Error(error?.message || data?.error || "Could not start secure phone login.");
+  }
+
+  if (data?.session?.access_token && data?.session?.refresh_token) {
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+    });
+    if (sessionError) throw sessionError;
+    return;
+  }
+
+  if (!data?.token_hash) {
+    throw new Error("Could not start secure phone login.");
   }
 
   const { error: verifyError } = await supabase.auth.verifyOtp({

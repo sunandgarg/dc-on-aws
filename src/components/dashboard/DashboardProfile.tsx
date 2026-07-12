@@ -9,6 +9,7 @@ import { useStatesAndCities } from "@/hooks/useLocations";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { HigherEducationSection } from "@/components/dashboard/HigherEducationSection";
+import { isSyntheticPhoneEmail } from "@/lib/authIdentity";
 
 const EDU_OPTIONS = [
   "Class 12 - Appearing", "Class 12 - Passed",
@@ -101,7 +102,7 @@ export function DashboardProfile() {
   const cityOptions = ((locations?.citiesByState as any)?.[stateValue] || []) as string[];
 
   const userEmail = user?.email || "";
-  const isOtpUser = !!user?.phone || userEmail.endsWith("@dekhocampus.local");
+  const isOtpUser = !!user?.phone || isSyntheticPhoneEmail(userEmail);
   const lockPhone = isOtpUser && !!profileAny?.phone;
 
   // Completion: weighted set of important fields

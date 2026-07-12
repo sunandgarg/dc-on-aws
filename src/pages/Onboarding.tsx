@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, CheckCircle2, Camera, Upload } from "lucide-react";
 import { isStrictIndianMobile, normalizeIndianMobile } from "@/lib/phone";
+import { isSyntheticPhoneEmail } from "@/lib/authIdentity";
 
 const EDU_OPTIONS = [
   "Class 12 - Appearing",
@@ -58,7 +59,7 @@ export default function Onboarding() {
         return;
       }
       const rawEmail = data?.email || user.email || "";
-      const isOtpSynthetic = rawEmail.endsWith("@dekhocampus.local");
+      const isOtpSynthetic = isSyntheticPhoneEmail(rawEmail);
       setForm((f) => ({
         ...f,
         display_name: data?.display_name || (user.user_metadata as any)?.full_name || (user.user_metadata as any)?.display_name || "",
@@ -76,8 +77,8 @@ export default function Onboarding() {
   if (!isLoading && !user) return <Navigate to="/auth" replace />;
 
   const userEmail = user?.email || "";
-  const isOtpUser = !!user?.phone || userEmail.endsWith("@dekhocampus.local");
-  const isGoogleUser = !!userEmail && !userEmail.endsWith("@dekhocampus.local") && !isOtpUser;
+  const isOtpUser = !!user?.phone || isSyntheticPhoneEmail(userEmail);
+  const isGoogleUser = !!userEmail && !isSyntheticPhoneEmail(userEmail) && !isOtpUser;
   const lockPhone = isOtpUser && !!form.phone;
   const lockEmail = isGoogleUser && !!form.email;
 

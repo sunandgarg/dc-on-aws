@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { functionUrl } from '@/lib/backendMode';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -60,7 +61,7 @@ interface Props {
   universities: any[];
 }
 
-const RECEIVE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/receive-lead`;
+const RECEIVE_URL = functionUrl('receive-lead');
 
 export function LandingPagesView({ universities }: Props) {
   const navigate = useNavigate();

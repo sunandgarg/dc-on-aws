@@ -1,0 +1,7 @@
+{
+  "name": "dekhocampus-aws-backend",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "node --env-file=.env src/server.mjs", "start": "node src/server.mjs" },
+  "engines": { "node": ">=20" }
+}

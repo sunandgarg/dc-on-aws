@@ -58,17 +58,6 @@ export function ApplyButton({ collegeSlug, collegeName, courseSlug = "", classNa
   };
   const normalizedApplyUrl = normalizeUrl(applyUrl);
 
-  // External-link mode: skip the lead form entirely, send users straight to the URL.
-  if (applyMode === "link" && normalizedApplyUrl) {
-    return (
-      <a href={normalizedApplyUrl} target="_blank" rel="noopener noreferrer" className={className.includes("w-full") ? "w-full" : undefined}>
-        <Button variant={variant} size={size} className={className}>
-          <GraduationCap className="w-4 h-4 mr-2" /> {label}
-        </Button>
-      </a>
-    );
-  }
-
   const isLeadThenLink = applyMode === "lead_then_link" && !!normalizedApplyUrl;
 
 
@@ -128,6 +117,18 @@ export function ApplyButton({ collegeSlug, collegeName, courseSlug = "", classNa
     })();
     return () => { cancelled = true; };
   }, [open, collegeSlug]);
+
+  // Keep this return after every hook. `applyMode` can change when an admin
+  // edits a college, and returning before hooks violates React's hook order.
+  if (applyMode === "link" && normalizedApplyUrl) {
+    return (
+      <a href={normalizedApplyUrl} target="_blank" rel="noopener noreferrer" className={className.includes("w-full") ? "w-full" : undefined}>
+        <Button variant={variant} size={size} className={className}>
+          <GraduationCap className="w-4 h-4 mr-2" /> {label}
+        </Button>
+      </a>
+    );
+  }
 
   const update = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
 

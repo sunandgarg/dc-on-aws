@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { functionUrl } from "@/lib/backendMode";
 import { Plus, Trash2, Pencil, Play, RefreshCw, Building2, Filter, Network, GitBranch, ListChecks, Upload, KeyRound, Link2, Send, Copy } from "lucide-react";
 
 const empty = "";
@@ -377,7 +378,7 @@ function ApiKeysTab() {
     toast.success("Saved"); setOpen(false); setEditing(null); qc.invalidateQueries({ queryKey: ["lp_api_keys"] });
   };
   const remove = async (id: string) => { if (!confirm("Delete?")) return; await supabase.from("lp_api_keys" as any).delete().eq("id", id); qc.invalidateQueries({ queryKey: ["lp_api_keys"] }); };
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lp-receive-lead`;
+  const webhookUrl = functionUrl("lp-receive-lead");
   const copy = (s: string) => { navigator.clipboard.writeText(s); toast.success("Copied"); };
   return (
     <div className="space-y-4">
@@ -440,7 +441,7 @@ function UtmLinksTab() {
     toast.success("Saved"); setOpen(false); setEditing(null); qc.invalidateQueries({ queryKey: ["lp_utm_links"] });
   };
   const remove = async (id: string) => { if (!confirm("Delete?")) return; await supabase.from("lp_utm_links" as any).delete().eq("id", id); qc.invalidateQueries({ queryKey: ["lp_utm_links"] }); };
-  const base = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lp-utm/`;
+  const base = `${functionUrl("lp-utm")}/`;
   const copy = (s: string) => { navigator.clipboard.writeText(s); toast.success("Copied"); };
   return (
     <div className="space-y-4">

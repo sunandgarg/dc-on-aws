@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
+import { functionUrl } from "@/lib/backendMode";
 import { Download, Sparkles, Flame, Snowflake, Activity, GraduationCap } from "lucide-react";
 
 interface ScoreRow {
@@ -141,7 +142,7 @@ export default function AdminLeadIntelligence() {
   const exportCsv = async () => {
     try {
       const { data: session } = await supabase.auth.getSession();
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intent-export-csv`;
+      const url = functionUrl("intent-export-csv");
       const res = await fetch(url, {
         method: "POST",
         headers: {
