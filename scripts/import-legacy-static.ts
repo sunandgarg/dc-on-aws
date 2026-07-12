@@ -61,8 +61,34 @@ const titleCase = (value: unknown) => {
     .toLowerCase()
     .replace(/\b([a-z])/g, (match) => match.toUpperCase());
 };
+const objectText = (value: unknown): string[] => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  const row = value as Record<string, unknown>;
+  const preferred = [
+    row.slug,
+    row.name,
+    row.title,
+    row.label,
+    row.course_name,
+    row.exam_name,
+    row.clg_name,
+    row.full_name,
+    row.short_name,
+  ]
+    .map((item) => clean(item))
+    .filter((item): item is string => Boolean(item));
+  if (preferred.length) return preferred;
+  return Object.values(row)
+    .map((item) => clean(item))
+    .filter((item): item is string => Boolean(item))
+    .slice(0, 3);
+};
 const stringList = (value: unknown): string[] => {
-  if (Array.isArray(value)) return value.flatMap(stringList);
+  if (Array.isArray(value)) return value.flatMap((item) => {
+    if (item && typeof item === "object" && !Array.isArray(item)) return objectText(item);
+    return stringList(item);
+  });
+  if (value && typeof value === "object") return objectText(value);
   const text = clean(value);
   if (!text) return [];
   if (text.startsWith("[") || text.startsWith("{")) { try { return stringList(JSON.parse(text)); } catch { /* use text */ } }
