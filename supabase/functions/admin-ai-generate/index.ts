@@ -31,6 +31,10 @@ type GenOptions = {
   status?: string;
   model?: string;                   // friendly key or full gateway model id
   automatic_research?: boolean;
+  research_competitors?: boolean;
+  research_trends?: boolean;
+  research_viral?: boolean;
+  check_own_news?: boolean;
   competitor_sources?: string[];
   word_limit?: number;
 };
@@ -42,7 +46,14 @@ const DEFAULT_ARTICLE_RESEARCH_SOURCES = [
   "https://collegedunia.com/news",
   "https://www.collegedekho.com/news",
   "https://www.pagalguy.com/mba/articles",
+  "https://www.dekhocampus.com/news",
   "https://www.dekhocampus.in/news",
+];
+
+const GOOGLE_TRENDS_EDUCATION_SOURCE = "https://trends.google.com/trending/rss?geo=IN";
+const VIRAL_EDUCATION_SOURCES = [
+  "https://news.google.com/rss/search?q=education+OR+college+OR+admission+OR+exam+India&hl=en-IN&gl=IN&ceid=IN:en",
+  "https://news.google.com/rss/search?q=JEE+OR+NEET+OR+CUET+OR+CAT+OR+board+exam+India&hl=en-IN&gl=IN&ceid=IN:en",
 ];
 
 const SYSTEM_RULES = `You are DekhoCampus content engine for 2026.
@@ -117,6 +128,23 @@ async function fetchArticleResearchSignals(sources: string[]) {
     return { url: source, ok: true, signal };
   }));
   return results.map((result, index) => result.status === "fulfilled" ? result.value : { url: uniqueSources[index], ok: false, signal: "Fetch failed" });
+}
+
+function normalizedTitle(value: string) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\b(2024|2025|2026|the|a|an|and|or|for|in|of|to|on|with|latest|news|update)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function titleSimilarity(left: string, right: string) {
+  const a = new Set(normalizedTitle(left).split(" ").filter(Boolean));
+  const b = new Set(normalizedTitle(right).split(" ").filter(Boolean));
+  if (!a.size || !b.size) return 0;
+  const intersection = [...a].filter((token) => b.has(token)).length;
+  return intersection / Math.min(a.size, b.size);
 }
 
 // ============ FULL-COLUMN SCHEMAS ============
@@ -324,8 +352,12 @@ Deno.serve(async (req) => {
       study_resources:   { table: "study_resources",   keyField: "title" },
     };
     const meta = TABLE_META[entity_type] || { table: entity_type, keyField: "slug" };
-    const { data: existingRows } = await sb.from(meta.table).select(meta.keyField).limit(2000);
+    const existingSelection = entity_type === "articles" ? `${meta.keyField},title` : meta.keyField;
+    const { data: existingRows } = await sb.from(meta.table).select(existingSelection).limit(5000);
     const existingKeys = new Set((existingRows || []).map((r: any) => r[meta.keyField]));
+    const existingArticleTitles = entity_type === "articles"
+      ? (existingRows || []).map((row: any) => ({ slug: row.slug, title: row.title })).filter((row: any) => row.title)
+      : [];
 
     const internalDbStr = JSON.stringify({
       colleges: internal.colleges.slice(0, 200).map((c: any) => ({ s: c.slug, n: c.name })),
@@ -334,8 +366,14 @@ Deno.serve(async (req) => {
       scholarships: internal.scholarships.map((c: any) => ({ s: c.slug, n: c.title })),
       careers: internal.careers.map((c: any) => ({ s: c.slug, n: c.name })),
     });
+    const selectedResearchSources = [
+      ...(opts.research_competitors !== false ? (opts.competitor_sources?.length ? opts.competitor_sources : DEFAULT_ARTICLE_RESEARCH_SOURCES) : []),
+      ...(opts.research_trends !== false ? [GOOGLE_TRENDS_EDUCATION_SOURCE] : []),
+      ...(opts.research_viral !== false ? VIRAL_EDUCATION_SOURCES : []),
+      ...(opts.check_own_news !== false ? ["https://www.dekhocampus.com/news", "https://www.dekhocampus.in/news"] : []),
+    ];
     const articleSignals = entity_type === "articles" && opts.automatic_research
-      ? await fetchArticleResearchSignals(opts.competitor_sources?.length ? opts.competitor_sources : DEFAULT_ARTICLE_RESEARCH_SOURCES)
+      ? await fetchArticleResearchSignals(selectedResearchSources)
       : [];
     const wordLimit = Number(opts.word_limit || (depth === "concise" ? 900 : depth === "standard" ? 1300 : 1800));
 
@@ -364,8 +402,10 @@ WORKFLOW (must follow in order for every record):
  6. FILL EVERY field defined in the schema; do not leave any column behind unless data is genuinely unavailable on the official source.
 
 ${names?.length ? `EXPLICIT NAMES (one record per name): ${JSON.stringify(names)}` : ""}
-${topic ? `TOPIC: "${topic}". Expand to ${count || 5} relevant ${entity_type}.` : ""}
+${topic ? `TOPIC: "${topic}". Expand to ${count || 5} relevant ${entity_type}.` : entity_type === "articles" && opts.automatic_research ? `DISCOVERY MODE: Select the ${count || 5} strongest current education topics from the supplied research signals. Prefer topics with clear Indian student utility, demonstrated search/news momentum and a genuine gap in DekhoCampus coverage.` : ""}
 Existing ${meta.keyField}s already in our DB (regenerate them anyway with the LATEST official data — they will be shown as UPSERT in the admin preflight): ${JSON.stringify([...existingKeys].slice(0, 300))}
+${entity_type === "articles" && opts.check_own_news !== false ? `EXISTING DEKHOCAMPUS NEWS TITLES (hard exclusion list): ${JSON.stringify(existingArticleTitles.slice(0, 1200))}
+Do not generate the same story, a title rewrite, or a substantially overlapping search intent. Choose a different current topic or a meaningfully distinct angle.` : ""}
 
 INTERNAL_DB (use these for internal hyperlinks inside HTML content fields):
 ${internalDbStr}
@@ -498,7 +538,20 @@ Return ONLY a JSON array. No markdown, no commentary.`;
     // Preflight classification: every item is returned with `_action`
     // ("insert" for new keys, "upsert" for keys already in DB). The admin UI
     // shows a preview before any write happens, and may filter as needed.
-    const items = stamped
+    const duplicateTitles: { generated_title: string; existing_title: string; existing_slug: string; similarity: number }[] = [];
+    const uniqueStamped = entity_type === "articles" && opts.check_own_news !== false
+      ? stamped.filter((row) => {
+          const match = existingArticleTitles
+            .map((existing: any) => ({ ...existing, similarity: titleSimilarity(row.title, existing.title) }))
+            .sort((a: any, b: any) => b.similarity - a.similarity)[0];
+          if (match && match.similarity >= 0.72) {
+            duplicateTitles.push({ generated_title: row.title, existing_title: match.title, existing_slug: match.slug, similarity: match.similarity });
+            return false;
+          }
+          return true;
+        })
+      : stamped;
+    const items = uniqueStamped
       .filter(r => r && r[meta.keyField])
       .map(r => ({
         ...r,
@@ -514,6 +567,7 @@ Return ONLY a JSON array. No markdown, no commentary.`;
       counts: { inserts, upserts, total: items.length },
       model_used: modelUsed,
       key_field: meta.keyField,
+      duplicate_titles_skipped: duplicateTitles,
     }), {
       headers: { ...cors, "Content-Type": "application/json" },
     });

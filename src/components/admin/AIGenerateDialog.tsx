@@ -39,6 +39,7 @@ const ARTICLE_RESEARCH_SOURCES = [
   "https://collegedunia.com/news",
   "https://www.collegedekho.com/news",
   "https://www.pagalguy.com/mba/articles",
+  "https://www.dekhocampus.com/news",
   "https://www.dekhocampus.in/news",
 ];
 const WORD_LIMITS = [
@@ -57,6 +58,7 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
   const [busy, setBusy] = useState(false);
   const [items, setItems] = useState<ItemRow[]>([]);
   const [modelUsed, setModelUsed] = useState<string>("");
+  const [duplicatesSkipped, setDuplicatesSkipped] = useState(0);
   const [mode, setMode] = useState<"all" | "insert_only" | "upsert_only">("all");
 
   // Brief
@@ -70,6 +72,10 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
   const [region, setRegion] = useState("India");
   const [status, setStatus] = useState<"Draft" | "Published">("Draft");
   const [automaticResearch, setAutomaticResearch] = useState(true);
+  const [researchCompetitors, setResearchCompetitors] = useState(true);
+  const [researchTrends, setResearchTrends] = useState(true);
+  const [researchViral, setResearchViral] = useState(true);
+  const [checkOwnNews, setCheckOwnNews] = useState(true);
   const [wordLimit, setWordLimit] = useState(1300);
   const [researchSources, setResearchSources] = useState(ARTICLE_RESEARCH_SOURCES.join("\n"));
 
@@ -109,11 +115,11 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
     mode === "all" ? items : items.filter(i => i._action === (mode === "insert_only" ? "insert" : "upsert")),
     [items, mode]);
 
-  const reset = () => { setTopic(""); setNames(""); setItems([]); setModelUsed(""); setMode("all"); };
+  const reset = () => { setTopic(""); setNames(""); setItems([]); setModelUsed(""); setDuplicatesSkipped(0); setMode("all"); };
 
   const generate = async () => {
     const nameList = names.split("\n").map(s => s.trim()).filter(Boolean);
-    if (!topic.trim() && nameList.length === 0) {
+    if (!topic.trim() && nameList.length === 0 && !(entityType === "articles" && automaticResearch)) {
       toast.error("Enter a topic or at least one name");
       return;
     }
@@ -132,6 +138,10 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
             status, is_active: true,
             model,
             automatic_research: entityType === "articles" ? automaticResearch : false,
+            research_competitors: entityType === "articles" ? researchCompetitors : false,
+            research_trends: entityType === "articles" ? researchTrends : false,
+            research_viral: entityType === "articles" ? researchViral : false,
+            check_own_news: entityType === "articles" ? checkOwnNews : false,
             competitor_sources: entityType === "articles" ? researchSources.split("\n").map(s => s.trim()).filter(Boolean) : undefined,
             word_limit: entityType === "articles" ? wordLimit : undefined,
           },
@@ -145,9 +155,10 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
       }));
       setItems(list);
       setModelUsed(data?.model_used || "");
+      setDuplicatesSkipped(data?.duplicate_titles_skipped?.length || 0);
       const c = data?.counts || { inserts: list.filter(i => i._action === "insert").length, upserts: list.filter(i => i._action === "upsert").length };
       if (list.length === 0) toast.info("AI returned no records - try a more specific topic");
-      else toast.success(`Preflight ready · ${c.inserts} new · ${c.upserts} updates`);
+      else toast.success(`Preflight ready · ${c.inserts} new · ${c.upserts} updates${data?.duplicate_titles_skipped?.length ? ` · ${data.duplicate_titles_skipped.length} duplicate skipped` : ""}`);
     } catch (e: any) {
       toast.error(`AI failed: ${e.message}`);
     } finally {
@@ -292,6 +303,29 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
                   <Button type="button" size="sm" variant={automaticResearch ? "default" : "outline"} onClick={() => setAutomaticResearch(v => !v)} className="rounded-xl">
                     {automaticResearch ? "Research on" : "Research off"}
                   </Button>
+                </div>
+                <div>
+                  <Label className="text-xs">Research channels</Label>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
+                    {[
+                      ["Competitors", researchCompetitors, setResearchCompetitors],
+                      ["Google Trends", researchTrends, setResearchTrends],
+                      ["Viral searches", researchViral, setResearchViral],
+                      ["Check our news", checkOwnNews, setCheckOwnNews],
+                    ].map(([channel, enabled, setter]) => (
+                      <Button
+                        key={String(channel)}
+                        type="button"
+                        size="sm"
+                        variant={enabled ? "default" : "outline"}
+                        onClick={() => (setter as React.Dispatch<React.SetStateAction<boolean>>)(value => !value)}
+                        className="rounded-xl"
+                      >
+                        {String(channel)} · {enabled ? "on" : "off"}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-2">Leave Topic empty to discover current education stories automatically. Existing DekhoCampus titles are excluded before preview.</p>
                 </div>
                 <div>
                   <Label className="text-xs">Word limit options</Label>
@@ -445,6 +479,7 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
                     <RefreshCw className="w-3 h-3" /> Update {counts.upsert}
                   </button>
                   <span className="text-[11px] text-muted-foreground ml-auto">Unique key: <code className="bg-muted px-1.5 py-0.5 rounded">{upsertKey}</code></span>
+                  {duplicatesSkipped > 0 && <span className="text-[11px] text-amber-700">{duplicatesSkipped} existing topic{duplicatesSkipped === 1 ? "" : "s"} excluded</span>}
                 </div>
                 <div className="max-h-80 overflow-y-auto divide-y divide-border/40">
                   {visible.map((r, i) => {
