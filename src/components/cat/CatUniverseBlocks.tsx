@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { AIChatFullScreen } from "@/components/AIChatFullScreen";
+import { AILeadForm } from "@/components/AILeadForm";
 import {
   ArrowRight,
   BarChart3,
@@ -12,6 +14,8 @@ import {
   LineChart,
   Sparkles,
   Target,
+  TrendingUp,
+  Wand2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -215,6 +219,7 @@ export function CatUniverseCalculator({
 }) {
   const benchmark = BENCHMARKS[examKey] || BENCHMARKS.cat;
   const isCat = examKey === "cat";
+  const [slot, setSlot] = useState("Slot 1");
 
   const [catInputs, setCatInputs] = useState({
     varcCorrect: 0,
@@ -241,6 +246,29 @@ export function CatUniverseCalculator({
     () => cutoffs.filter((item) => item.percentile <= percentile + 1).slice(0, 5),
     [cutoffs, percentile],
   );
+  const catBreakdown = useMemo(() => {
+    if (!isCat) return null;
+    const compute = (correct: number, incorrect: number) => correct * benchmark.positive - incorrect * benchmark.negative;
+    return {
+      varc: compute(catInputs.varcCorrect, catInputs.varcIncorrect),
+      dilr: compute(catInputs.dilrCorrect, catInputs.dilrIncorrect),
+      qa: compute(catInputs.qaCorrect, catInputs.qaIncorrect),
+    };
+  }, [benchmark.negative, benchmark.positive, catInputs, isCat]);
+  const scoreBand = useMemo(() => {
+    if (percentile >= 99) return "99+ percentile territory";
+    if (percentile >= 95) return "95+ percentile territory";
+    if (percentile >= 90) return "90+ percentile territory";
+    if (percentile >= 80) return "80+ percentile territory";
+    return "Below 80 percentile territory";
+  }, [percentile]);
+  const bandHelper = useMemo(() => {
+    if (percentile >= 99) return "This usually puts you in the serious old-IIM and FMS conversation zone.";
+    if (percentile >= 95) return "This usually keeps top private B-schools and several strong IIM outcomes alive.";
+    if (percentile >= 90) return "This is a strong band for IIT MBAs, new IIMs, and many private MBA options.";
+    if (percentile >= 80) return "This is a practical shortlist-building zone where strategy matters a lot.";
+    return "You should widen your application basket and use profile strength carefully.";
+  }, [percentile]);
 
   return (
     <div className="space-y-6">
@@ -252,36 +280,68 @@ export function CatUniverseCalculator({
         <p className="mt-3 text-sm leading-6 text-muted-foreground">{benchmark.helper}</p>
 
         {isCat ? (
-          <div className="mt-5 grid gap-4 md:grid-cols-3">
-            {[
-              { key: "varc", label: "VARC" },
-              { key: "dilr", label: "DILR" },
-              { key: "qa", label: "QA" },
-            ].map((section) => (
-              <div key={section.key} className="rounded-2xl border border-border bg-muted/30 p-4">
-                <div className="font-semibold text-foreground">{section.label}</div>
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Correct</label>
-                    <Input
-                      type="number"
-                      value={(catInputs as any)[`${section.key}Correct`]}
-                      min={0}
-                      onChange={(event) => setCatInputs((prev) => ({ ...prev, [`${section.key}Correct`]: Number(event.target.value || 0) }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Incorrect</label>
-                    <Input
-                      type="number"
-                      value={(catInputs as any)[`${section.key}Incorrect`]}
-                      min={0}
-                      onChange={(event) => setCatInputs((prev) => ({ ...prev, [`${section.key}Incorrect`]: Number(event.target.value || 0) }))}
-                    />
-                  </div>
+          <div className="mt-5 space-y-5">
+            <div className="grid gap-4 md:grid-cols-[0.7fr_1.3fr]">
+              <div className="rounded-2xl border border-border bg-muted/30 p-4">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Exam slot</label>
+                <select
+                  className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                  value={slot}
+                  onChange={(event) => setSlot(event.target.value)}
+                >
+                  {["Slot 1", "Slot 2", "Slot 3"].map((item) => <option key={item}>{item}</option>)}
+                </select>
+                <div className="mt-3 text-sm leading-6 text-muted-foreground">
+                  Slot selection helps users feel aligned with real CAT exam behaviour. Final percentile still remains a directional estimate.
                 </div>
               </div>
-            ))}
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                  <TrendingUp className="h-4 w-4" />
+                  CAT score calculator formula
+                </div>
+                <div className="mt-2 text-sm leading-7 text-muted-foreground">
+                  CAT raw score is estimated as <span className="font-semibold text-foreground">3 marks for every correct answer</span> and <span className="font-semibold text-foreground">-1 for every incorrect MCQ</span>.
+                  TITA-type questions usually have no negative marking, so this page assumes only penalised wrong answers are entered in the incorrect field.
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              {[
+                { key: "varc", label: "VARC", helper: "Verbal Ability and Reading Comprehension" },
+                { key: "dilr", label: "DILR", helper: "Data Interpretation and Logical Reasoning" },
+                { key: "qa", label: "QA", helper: "Quantitative Ability" },
+              ].map((section) => (
+                <div key={section.key} className="rounded-2xl border border-border bg-muted/30 p-4">
+                  <div className="font-semibold text-foreground">{section.label}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{section.helper}</div>
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <label className="mb-1 block text-xs text-muted-foreground">Correct answers</label>
+                      <Input
+                        type="number"
+                        value={(catInputs as any)[`${section.key}Correct`]}
+                        min={0}
+                        onChange={(event) => setCatInputs((prev) => ({ ...prev, [`${section.key}Correct`]: Number(event.target.value || 0) }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-muted-foreground">Incorrect MCQs</label>
+                      <Input
+                        type="number"
+                        value={(catInputs as any)[`${section.key}Incorrect`]}
+                        min={0}
+                        onChange={(event) => setCatInputs((prev) => ({ ...prev, [`${section.key}Incorrect`]: Number(event.target.value || 0) }))}
+                      />
+                    </div>
+                    <div className="rounded-xl bg-background px-3 py-2 text-sm text-muted-foreground">
+                      Section score: <span className="font-semibold text-foreground">{(catBreakdown as any)?.[section.key]?.toFixed?.(2) ?? "0.00"}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -311,6 +371,12 @@ export function CatUniverseCalculator({
           <ScoreSummary title="Estimated percentile" value={`${Math.min(99.99, Math.max(35, percentile)).toFixed(2)}%ile`} helper="Interpolated from recent score-vs-percentile benchmarks" />
           <ScoreSummary title="Likely zone" value={getCallout(percentile)} helper="Use this to decide whether to chase elite, reach or value schools" />
         </div>
+        {isCat ? (
+          <div className="mt-5 rounded-2xl border border-orange-200 bg-orange-50 p-4">
+            <div className="text-sm font-semibold text-orange-800">{scoreBand}</div>
+            <div className="mt-1 text-sm leading-6 text-orange-900/80">{bandHelper}</div>
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -366,6 +432,50 @@ export function CatUniverseCalculator({
           </div>
         </div>
       </div>
+
+      {isCat ? (
+        <>
+          <section className="rounded-3xl border border-border bg-card p-5 md:p-6">
+            <h2 className="text-2xl font-black text-foreground">CAT score vs percentile - quick guide</h2>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              Students searching for a CAT score calculator usually want three things fast - estimated raw score, probable percentile, and what that means for their MBA shortlist.
+              This CAT percentile predictor is built to answer all three in one place while keeping the experience simple enough for mobile users.
+            </p>
+            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {[
+                { title: "99+ percentile", helper: "Usually elite-call territory", value: "85-110+ score band" },
+                { title: "95+ percentile", helper: "Top-school contention band", value: "64-84 score band" },
+                { title: "90+ percentile", helper: "Strong shortlist-building band", value: "53-63 score band" },
+                { title: "80+ percentile", helper: "Value-school strategy band", value: "41-52 score band" },
+              ].map((item) => (
+                <div key={item.title} className="rounded-2xl border border-border bg-muted/30 p-4">
+                  <div className="text-sm font-semibold text-foreground">{item.title}</div>
+                  <div className="mt-2 text-lg font-black text-primary">{item.value}</div>
+                  <div className="mt-1 text-xs leading-6 text-muted-foreground">{item.helper}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-border bg-card p-5 md:p-6">
+            <h2 className="text-2xl font-black text-foreground">How to use this CAT score calculator</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {[
+                "Enter section-wise correct answers for VARC, DILR and QA.",
+                "Enter only those wrong answers that carry negative marking.",
+                "Check your estimated CAT raw score instantly.",
+                "Review the likely percentile range and college-signal zone.",
+                "Use the shortlist cards to move straight into counseling action.",
+                "Refresh estimates later if new CAT score-vs-percentile trends emerge.",
+              ].map((item) => (
+                <div key={item} className="rounded-2xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </section>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -664,5 +774,88 @@ export function CatUniverseSectionCards({
         })}
       </div>
     </section>
+  );
+}
+
+export function CatUniverseAiPanel({
+  module,
+  sectionTitle,
+}: {
+  module: CatUniverseModule;
+  sectionTitle: string;
+}) {
+  const [isLeadOpen, setIsLeadOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [leadInfo, setLeadInfo] = useState<{ name: string; course: string; state: string; city: string }>();
+
+  const initialPrompt = useMemo(() => {
+    if (module.slug === "cat-score-calculator") {
+      return "I am on the CAT score calculator page. Help me understand my estimated CAT score, likely percentile band, and which MBA colleges I should shortlist next.";
+    }
+    if (module.slug === "iim-call-predictor") {
+      return "I am on the IIM call predictor page. Help me estimate likely IIM calls and next steps using my percentile, academics, category, and work experience.";
+    }
+    if (module.module_type === "cutoff_list") {
+      return `I am exploring ${module.title}. Help me shortlist realistic MBA colleges from this cut-off page based on my score, budget, and city preferences.`;
+    }
+    if (module.module_type === "resource_hub") {
+      return `I am on ${module.title}. Help me create a preparation strategy using these resources and tell me what to focus on first.`;
+    }
+    return `I am on the ${module.title} page inside ${sectionTitle}. Guide me with the best next steps and help me shortlist the right MBA options.`;
+  }, [module, sectionTitle]);
+
+  return (
+    <>
+      <section className="rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/5 via-background to-orange-50 p-5 md:p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
+              <Wand2 className="h-3.5 w-3.5" />
+              AI-guided help
+            </div>
+            <h2 className="mt-3 text-2xl font-black text-foreground">Lead-first AI for every CAT Universe page</h2>
+            <p className="mt-2 text-sm leading-7 text-muted-foreground">
+              Students get AI support only after sharing their details, so every AI interaction also becomes a meaningful counseling lead. The assistant then responds using the page context - score estimate, shortlist, cut-off navigation, or prep strategy.
+            </p>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {[
+                "Lead capture before AI response",
+                "Context-aware CAT and MBA prompts",
+                "Same DekhoCampus visual language",
+              ].map((item) => (
+                <div key={item} className="rounded-2xl border border-border bg-background/80 p-3 text-sm text-muted-foreground">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button className="rounded-xl" onClick={() => setIsLeadOpen(true)}>
+              Start AI counselling
+            </Button>
+            <div className="text-xs text-muted-foreground">
+              Personalized MBA help after one quick lead step
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <AILeadForm
+        isOpen={isLeadOpen}
+        onClose={() => setIsLeadOpen(false)}
+        onSubmit={(data) => {
+          setLeadInfo(data);
+          setIsLeadOpen(false);
+          setIsChatOpen(true);
+        }}
+      />
+
+      <AIChatFullScreen
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        initialMessage={initialPrompt}
+        leadData={leadInfo}
+      />
+    </>
   );
 }

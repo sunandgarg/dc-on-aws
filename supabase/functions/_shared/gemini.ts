@@ -1,8 +1,8 @@
 // Shared Google Gemini (Generative Language API) client.
-// Uses the GEMINI_API_KEY secret and the gemini-2.5-flash-lite model by default.
+// Uses the GEMINI_API_KEY secret and the gemini-2.5-flash model by default.
 // No Lovable AI Gateway. No admin provider rows. Single source of truth.
 
-export const GEMINI_MODEL = "gemini-2.5-flash-lite";
+export const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
