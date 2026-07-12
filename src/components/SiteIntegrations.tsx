@@ -13,6 +13,14 @@ export function SiteIntegrations() {
       const map: Record<string, string> = {};
       for (const r of data) if (r.enabled && r.value) map[r.key] = r.value;
 
+      // Analytics pixels are non-critical. Keep them out of the LCP/INP window.
+      await new Promise<void>((resolve) => {
+        const start = () => window.setTimeout(resolve, 2500);
+        if (document.readyState === "complete") start();
+        else window.addEventListener("load", start, { once: true });
+      });
+      if (cancelled) return;
+
       const inject = (id: string, html: string) => {
         if (document.getElementById(id)) return;
         const tpl = document.createElement("template");

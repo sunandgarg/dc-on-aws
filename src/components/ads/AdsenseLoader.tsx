@@ -20,13 +20,10 @@ export function AdsenseLoader() {
     // Defer heavy 3rd-party ad scripts until after LCP so they don't
     // block the main thread on first paint (huge PageSpeed win).
     let cancelled = false;
-    const ric: (cb: () => void) => number =
-      (window as any).requestIdleCallback ||
-      ((cb: () => void) => window.setTimeout(cb, 1500));
-    const handle = ric(() => {
+    const handle = window.setTimeout(() => {
       if (cancelled) return;
       runInject();
-    });
+    }, 5000);
 
     const created: HTMLElement[] = [];
 
@@ -113,7 +110,7 @@ export function AdsenseLoader() {
 
     return () => {
       cancelled = true;
-      try { (window as any).cancelIdleCallback?.(handle); } catch {}
+      window.clearTimeout(handle);
       created.forEach((el) => el.parentNode?.removeChild(el));
     };
   }, [isAdmin, settings, scripts]);

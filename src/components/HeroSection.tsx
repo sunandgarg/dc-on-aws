@@ -20,19 +20,13 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useHeroSettings } from "@/hooks/useHeroSettings";
-import logo from "@/assets/dc-logo.png";
 import dcLogo from "@/assets/dc-logo.png";
-import campusBg1 from "@/assets/campus-hero-bg.jpg";
-import campusBg2 from "@/assets/campus-hero-new.png";
-import campusBg3 from "@/assets/campus-building.png";
 import iconCollege from "@/assets/cat-college.png";
 import iconCourse from "@/assets/cat-course.png";
 import iconExam from "@/assets/cat-exam.png";
 import iconApplication from "@/assets/cat-application.png";
 import iconReviews from "@/assets/cat-reviews.png";
 import iconNews from "@/assets/cat-news.png";
-
-const HERO_BG_IMAGES = [campusBg1, campusBg2, campusBg3];
 
 const rotatingWords = ["College", "Course", "Career", "Exam", "Future"];
 const wordColors = ["text-gradient", "text-gradient-accent", "text-gradient", "text-gradient-accent", "text-gradient"];
