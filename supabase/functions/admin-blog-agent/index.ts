@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { geminiGenerate, GEMINI_MODEL } from "./gemini.ts";
+import { generateAndUploadBlogCover, generateBlogJson, loadBlogAiConfig } from "../_shared/blog-ai.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -136,6 +137,7 @@ Deno.serve(async (req) => {
       ...(settingsRow || {}),
       ...(body.override || {}),
     };
+    const blogAi = await loadBlogAiConfig(admin, service);
 
     if (triggerType === "schedule" && !settings.enabled) return json({ skipped: true, message: "Blog auto agent is disabled" });
     if (triggerType === "schedule" && settings.next_run_at && new Date(settings.next_run_at).getTime() > Date.now()) {
@@ -164,17 +166,16 @@ Deno.serve(async (req) => {
     const { data: existingArticles } = await admin.from("articles").select("title,slug,description,tags,created_at").order("created_at", { ascending: false }).limit(80);
 
     const topicPrompt = `You are the DekhoCampus education-news editor. Today is ${new Date().toISOString().slice(0, 10)} in India.\n\nResearch signals from competitor and own website pages:\n${JSON.stringify(signals)}\n\nRecent DekhoCampus articles to avoid duplicates:\n${JSON.stringify(existingArticles || [])}\n\nPick the best ${settings.posts_per_run} article opportunities for Indian students and parents. Prioritise timely admissions, exams, counselling, scholarships, careers and college decisions. Do not copy competitors. Return JSON only: {topics:[{title,angle,primary_keyword,geo_focus,reason,category,tags:[...]}]}.`;
-    const topicResult = await callModel(admin, settings.model_provider, topicPrompt);
-    const topics = (parseJson(topicResult.raw).topics || []).slice(0, settings.posts_per_run);
+    const topicRaw = await generateBlogJson(blogAi, topicPrompt + "\nUse natural plain language, never use an em dash, and return JSON only.");
+    const topics = (parseJson(topicRaw).topics || []).slice(0, settings.posts_per_run);
 
     const createdIds: string[] = [];
     for (const topic of topics) {
       const articlePrompt = `Create a complete original DekhoCampus article from this approved topic:\n${JSON.stringify(topic)}\n\nResearch context:\n${JSON.stringify(signals)}\n\nTarget length: ${settings.word_limit} words.\n\nReturn JSON only: {title,slug,description,content_html,meta_title,meta_description,meta_keywords,tags,entity_suggestions:[{entity_type,entity_slug,label}],research_notes,cover_kicker}.\n\nRules: optimise for SEO, GEO, AEO and student usefulness. Use plain human wording, short paragraphs, useful headings, FAQs, and small hyphen '-' only. Never copy competitor wording. Avoid fake certainty on dates, fees, cutoffs or rules. Mention official-source verification where needed. Add a final Sources section with source names or official-source guidance.`;
-      const articleResult = await callModel(admin, settings.model_provider, articlePrompt);
-      const draft = parseJson(articleResult.raw);
+      const articleRaw = await generateBlogJson(blogAi, articlePrompt + "\nFollow current SEO, GEO and AEO guidance. This is AI-assisted editor-reviewed content. Never claim human authorship, undetectability or 0 AI.");
+      const draft = parseJson(articleRaw);
       const slug = slugify(draft.slug || draft.title || topic.title);
-      const svg = coverSvg(draft.title || topic.title, draft.cover_kicker || topic.category || "Education update");
-      const featured_image = await uploadCover(admin, slug, svg);
+      const featured_image = await generateAndUploadBlogCover(admin, blogAi, slug, draft.hero_hook || draft.title || topic.title);
       const tags = Array.from(new Set([...(draft.tags || []), "auto-blog-agent"]));
 
       const { data: article, error } = await admin.from("articles").upsert({
@@ -208,7 +209,7 @@ Deno.serve(async (req) => {
       sources: signals.map(({ signal, ...rest }) => rest),
       selected_topics: topics,
       created_article_ids: createdIds,
-      message: `Created ${createdIds.length} article(s) using ${topicResult.modelUsed}`,
+      message: `Created ${createdIds.length} article(s) using anthropic:${blogAi.textModel} and openai:${blogAi.imageModel}`,
     }).eq("id", runId);
 
     return json({ success: true, created_article_ids: createdIds, topics, next_run_at: nextRun });

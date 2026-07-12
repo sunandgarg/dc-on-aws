@@ -6,6 +6,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { geminiGenerate, GEMINI_MODEL } from "../_shared/gemini.ts";
+import { generateAndUploadBlogCover, generateBlogJson, loadBlogAiConfig } from "../_shared/blog-ai.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -437,7 +438,16 @@ Return ONLY a JSON array. No markdown, no commentary.`;
     let text = "[]";
     let modelUsed: string;
 
-    if (direct) {
+    let blogAi: Awaited<ReturnType<typeof loadBlogAiConfig>> | null = null;
+    if (entity_type === "articles") {
+      blogAi = await loadBlogAiConfig(sb, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      modelUsed = `anthropic:${blogAi.textModel}`;
+      try {
+        text = await generateBlogJson(blogAi, `${SYSTEM_RULES}\n\n${userPrompt}\n\nUse current SEO, GEO and AEO guidance. Never use an em dash. This is AI-assisted editor-reviewed work - never claim human authorship, undetectability or 0 AI. Return only valid JSON.`);
+      } catch (e: any) {
+        return new Response(JSON.stringify({ error: e?.message || String(e), model_used: modelUsed }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
+      }
+    } else if (direct) {
       modelUsed = `${direct.provider_name}:${direct.default_model}`;
       const isAnthropic = direct.provider_name === "anthropic" || (direct.base_url || "").includes("anthropic.com");
       let resp: Response;
@@ -521,11 +531,12 @@ Return ONLY a JSON array. No markdown, no commentary.`;
     // actually have these columns get them — we let upsert ignore the rest.
     const HAS_AUTHOR = new Set(["colleges","courses","exams","scholarships","career_profiles","articles","study_subjects"]);
     const HAS_STATUS = new Set(["colleges","courses","exams","career_profiles","articles","promoted_programs"]);
-    const stamped = arr.map(r => {
+    const stamped = await Promise.all(arr.map(async r => {
       const out: any = { ...r };
       if (meta.table === "articles") {
         const title = String(out.title || out.name || topic || "DekhoCampus update");
-        out.cover_svg = out.cover_svg || coverSvg(title, out.cover_kicker || out.category || "Education update");
+        const slug = String(out.slug || title).toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 90);
+        if (blogAi) out.featured_image = await generateAndUploadBlogCover(sb, blogAi, slug, out.hero_hook || title);
         if (!Array.isArray(out.entity_suggestions)) out.entity_suggestions = [];
       }
       if (opts.author_id && HAS_AUTHOR.has(meta.table)) out.author_id = opts.author_id;
@@ -533,7 +544,7 @@ Return ONLY a JSON array. No markdown, no commentary.`;
       if (HAS_STATUS.has(meta.table) && !out.status) out.status = opts.status || "draft";
       if ("is_active" in out === false) out.is_active = opts.is_active ?? true;
       return out;
-    });
+    }));
 
     // Preflight classification: every item is returned with `_action`
     // ("insert" for new keys, "upsert" for keys already in DB). The admin UI

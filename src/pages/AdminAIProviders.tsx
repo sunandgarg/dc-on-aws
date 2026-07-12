@@ -11,6 +11,7 @@ import { Eye, EyeOff, Save, TestTube, Loader2, Shield, CheckCircle, XCircle, Plu
 import { Badge } from "@/components/ui/badge";
 
 import { CSVTools } from "@/components/CSVTools";
+import { BlogAISettingsCard } from "@/components/admin/BlogAISettingsCard";
 /**
  * AdminAIProviders - Manage AI Provider API Keys
  * 
@@ -152,6 +153,7 @@ export default function AdminAIProviders() {
 
   return (
     <AdminLayout title="AI Providers">
+      <BlogAISettingsCard />
       <div className="mb-4">
         <CSVTools table="ai_providers" filename="ai_providers.csv" columns="*" upsertKey="id" />
       </div>

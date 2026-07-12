@@ -167,13 +167,7 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
   };
 
   const uploadCover = async (row: ItemRow) => {
-    if (entityType !== "articles" || !row.cover_svg) return row.featured_image || "";
-    const slug = slugify(row.slug || row.title || "article");
-    const blob = new Blob([row.cover_svg], { type: "image/svg+xml" });
-    const path = `blog-covers/${slug}-${Date.now()}.svg`;
-    const { error } = await supabase.storage.from("admin-uploads").upload(path, blob, { contentType: "image/svg+xml", upsert: false });
-    if (error) throw error;
-    return supabase.storage.from("admin-uploads").getPublicUrl(path).data.publicUrl;
+    return entityType === "articles" ? row.featured_image || "" : "";
   };
 
   const commit = async () => {
@@ -263,8 +257,9 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
           </DialogHeader>
 
           <div className="p-6 space-y-5">
-            {/* Model picker - first thing the user sees */}
-            <div>
+            {entityType === "articles" ? (
+              <div className="rounded-xl border bg-muted/40 p-3 text-sm"><b>Blog providers:</b> Claude generates text and OpenAI GPT Image generates branded WebP covers. Configure both under Admin - AI Providers.</div>
+            ) : <div>
               <div className="flex items-center gap-2 mb-2">
                 <Cpu className="w-4 h-4 text-primary" />
                 <Label className="text-sm font-semibold">AI Model</Label>
@@ -287,7 +282,7 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
                   </button>
                 ))}
               </div>
-            </div>
+            </div>}
 
             {/* Inputs */}
             {entityType === "articles" && (
@@ -503,7 +498,7 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
                             </div>
                           )}
                         </div>
-                        {entityType === "articles" && r.cover_svg && (
+                        {entityType === "articles" && r.featured_image && (
                           <div className="hidden sm:flex items-center gap-2 text-[11px] text-muted-foreground">
                             <ImageIcon className="w-3.5 h-3.5" />
                             Image ready

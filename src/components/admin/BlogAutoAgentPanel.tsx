@@ -116,7 +116,7 @@ export function BlogAutoAgentPanel({ onArticlesCreated }: { onArticlesCreated?: 
             <Badge variant={settings.enabled ? "default" : "secondary"}>{settings.enabled ? "Running" : "Paused"}</Badge>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Researches competitors plus DekhoCampus, selects 2-3 original topics, creates SEO/GEO/AEO articles, tags entities, generates SVG covers, and publishes on schedule.
+            Researches competitors plus DekhoCampus, uses Claude for original SEO/GEO/AEO articles, tags entities, generates branded OpenAI WebP covers, and publishes on schedule.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -163,8 +163,8 @@ export function BlogAutoAgentPanel({ onArticlesCreated }: { onArticlesCreated?: 
           <Input type="number" min={1} max={48} value={settings.daily_post_cap} onChange={e => updateSetting("daily_post_cap", Number(e.target.value || 12))} className="mt-1" />
         </div>
         <div>
-          <Label className="text-xs">Model provider</Label>
-          <Input value={settings.model_provider} onChange={e => updateSetting("model_provider", e.target.value)} className="mt-1" placeholder="gemini, openai, anthropic..." />
+          <Label className="text-xs">Blog AI providers</Label>
+          <div className="mt-1 rounded-md border bg-muted/40 px-3 py-2 text-sm">Claude text + OpenAI image</div>
         </div>
         <div>
           <Label className="text-xs">Word limit</Label>
