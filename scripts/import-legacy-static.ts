@@ -119,7 +119,12 @@ function candidateFromPage(file: string, root: string, document: Json): Candidat
 
 async function discover(root: string) {
   const candidates = new Map<Entity, Map<string, Candidate>>(["colleges", "courses", "exams", "articles"].map((entity) => [entity as Entity, new Map()]));
-  for (const file of (await files(root)).filter((item) => item.endsWith(".json") && !item.endsWith(".nft.json"))) {
+  const allFiles = (await files(root)).filter((item) => item.endsWith(".json") && !item.endsWith(".nft.json"));
+  console.log(`[import:static] scanning ${allFiles.length} JSON files`);
+  let scanned = 0;
+  for (const file of allFiles) {
+    scanned += 1;
+    if (scanned % 500 === 0 || scanned === allFiles.length) console.log(`[import:static] scanned ${scanned}/${allFiles.length}`);
     let document: Json; try { document = JSON.parse(await readFile(file, "utf8")); } catch { continue; }
     const found = candidateFromPage(file, root, document); if (!found) continue;
     const stats = report.entities[found.entity]; stats.discovered += 1;
@@ -144,7 +149,9 @@ function collectAssetUrls(payload: Json) {
 async function mirror(client: SupabaseClient, candidates: Candidate[]) {
   const sourceUrls = [...new Set(candidates.flatMap((candidate) => collectAssetUrls(candidate.payload)))].filter((item) => allowedAssetHost.has(new URL(item).hostname));
   report.asset_mirror.discovered = sourceUrls.length;
+  console.log(`[import:static] mirroring ${sourceUrls.length} assets`);
   const replacements = new Map<string, string>();
+  let mirrored = 0;
   for (const source of sourceUrls) {
     try {
       const response = await fetch(source, { redirect: "error", signal: AbortSignal.timeout(20_000) });
@@ -157,6 +164,8 @@ async function mirror(client: SupabaseClient, candidates: Candidate[]) {
       const path = `static/${createHash("sha256").update(source).digest("hex")}-${basename(new URL(source).pathname).replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "asset"}`;
       const { error } = await client.storage.from("legacy-public-assets").upload(path, bytes, { contentType: type, cacheControl: "31536000", upsert: true }); if (error) throw error;
       replacements.set(source, client.storage.from("legacy-public-assets").getPublicUrl(path).data.publicUrl); report.asset_mirror.mirrored += 1;
+      mirrored += 1;
+      if (mirrored % 25 === 0 || mirrored === sourceUrls.length) console.log(`[import:static] mirrored ${mirrored}/${sourceUrls.length}`);
     } catch (error) { report.asset_mirror.failed.push({ url: source, message: error instanceof Error ? error.message : "asset download failed" }); }
   }
   for (const candidate of candidates) {
@@ -176,6 +185,7 @@ async function insert(client: SupabaseClient, entity: Entity, candidates: Candid
     return true;
   });
   stats.eligible = ready.length;
+  console.log(`[import:static] inserting ${entity}: ${ready.length} eligible, ${stats.existing_in_supabase.length} already in Supabase`);
   for (let i = 0; i < ready.length; i += 100) {
     const batch = ready.slice(i, i + 100); const { error } = await client.from(entity).insert(batch.map((candidate) => candidate.payload));
     if (!error) { stats.inserted += batch.length; continue; }
@@ -183,11 +193,24 @@ async function insert(client: SupabaseClient, entity: Entity, candidates: Candid
   }
 }
 
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const maybe = error as { message?: unknown; details?: unknown; code?: unknown };
+    const parts = [maybe.message, maybe.details, maybe.code].filter(Boolean).map(String);
+    if (parts.length) return parts.join("\n");
+  }
+  return String(error);
+}
+
 async function main() {
   const root = resolve(contentRoot!); report.sources.push(root);
   const client = offline ? null : createClient(projectUrl!, apply ? serviceKey! : publicKey!, { auth: { persistSession: false, autoRefreshToken: false } });
+  console.log(`[import:static] mode=${apply ? "apply" : "dry-run"} publish=${publish} mirrorAssets=${mirrorAssets}`);
   const all = await discover(root); const flat = [...all.values()].flatMap((values) => [...values.values()]);
+  console.log(`[import:static] discovered colleges=${all.get("colleges")!.size} courses=${all.get("courses")!.size} exams=${all.get("exams")!.size} articles=${all.get("articles")!.size}`);
   for (const entity of ["colleges", "courses", "exams", "articles"] as Entity[]) {
+    console.log(`[import:static] checking existing slugs for ${entity}`);
     const current = client ? await existingSlugs(client, entity) : new Set<string>(); const candidates = [...all.get(entity)!.values()];
     for (const candidate of candidates) if (current.has(candidate.slug)) report.entities[entity].existing_in_supabase.push(candidate.slug); else report.entities[entity].eligible += 1;
   }
@@ -200,4 +223,12 @@ async function main() {
   console.log(JSON.stringify(report, null, 2));
 }
 
-await main();
+await main().catch((error) => {
+  const message = errorMessage(error);
+  console.error("[import:static] failed");
+  console.error(message);
+  if (/ENOTFOUND|fetch failed|getaddrinfo/i.test(message)) {
+    console.error("[import:static] Supabase is not reachable from this machine right now. Check internet/DNS, then rerun the same command.");
+  }
+  process.exitCode = 1;
+});

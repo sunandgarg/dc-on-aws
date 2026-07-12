@@ -30,7 +30,20 @@ type GenOptions = {
   is_active?: boolean;
   status?: string;
   model?: string;                   // friendly key or full gateway model id
+  automatic_research?: boolean;
+  competitor_sources?: string[];
+  word_limit?: number;
 };
+
+const DEFAULT_ARTICLE_RESEARCH_SOURCES = [
+  "https://www.shiksha.com/news",
+  "https://www.careers360.com/articles",
+  "https://news.kollegeapply.com",
+  "https://collegedunia.com/news",
+  "https://www.collegedekho.com/news",
+  "https://www.pagalguy.com/mba/articles",
+  "https://www.dekhocampus.in/news",
+];
 
 const SYSTEM_RULES = `You are DekhoCampus content engine for 2026.
 
@@ -66,6 +79,44 @@ async function fetchInternalDb(sb: any) {
     scholarships: scholarships.data || [],
     careers: careers.data || [],
   };
+}
+
+function stripHtml(input: string) {
+  return input
+    .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function esc(value: string) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function coverSvg(title: string, kicker: string) {
+  const words = String(title || "DekhoCampus update").split(/\s+/).slice(0, 13).join(" ");
+  const label = String(kicker || "Education update").toUpperCase().slice(0, 42);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0f172a"/><stop offset=".52" stop-color="#1d4ed8"/><stop offset="1" stop-color="#f5821f"/></linearGradient></defs><rect width="1600" height="900" fill="url(#g)"/><circle cx="1310" cy="130" r="330" fill="#fff" opacity=".09"/><circle cx="170" cy="830" r="370" fill="#fef3c7" opacity=".11"/><text x="115" y="145" fill="#dbeafe" font-family="Arial,sans-serif" font-size="34" font-weight="700" letter-spacing="5">DEKHOCAMPUS - ${esc(label)}</text><foreignObject x="115" y="245" width="1280" height="430"><div xmlns="http://www.w3.org/1999/xhtml" style="font-family:Arial,sans-serif;color:white;font-size:78px;line-height:1.12;font-weight:850">${esc(words)}</div></foreignObject><text x="115" y="820" fill="#e0f2fe" font-family="Arial,sans-serif" font-size="30">Fresh guidance for students and parents</text></svg>`;
+}
+
+async function fetchArticleResearchSignals(sources: string[]) {
+  const uniqueSources = [...new Set(sources.map((source) => String(source || "").trim()).filter((source) => /^https:\/\//i.test(source)))].slice(0, 10);
+  const results = await Promise.allSettled(uniqueSources.map(async (source) => {
+    const response = await fetch(source, {
+      headers: {
+        "User-Agent": "DekhoCampus editorial research bot/1.0",
+        "Accept": "text/html,application/xhtml+xml",
+      },
+    });
+    if (!response.ok) return { url: source, ok: false, signal: `Unavailable ${response.status}` };
+    const signal = stripHtml((await response.text()).slice(0, 160000)).slice(0, 4200);
+    return { url: source, ok: true, signal };
+  }));
+  return results.map((result, index) => result.status === "fulfilled" ? result.value : { url: uniqueSources[index], ok: false, signal: "Fetch failed" });
 }
 
 // ============ FULL-COLUMN SCHEMAS ============
@@ -160,10 +211,13 @@ function schemaFor(type: EntityType): string {
     case "articles":
       return `Array of objects:
 { "title": string, "slug": string, "description": string (140 char hook),
-  "content": string (long HTML 800-1500 words with h2/h3, lists, table, 5-8 internal links),
+  "content": string (long HTML with h2/h3, lists, table, FAQ block, 5-8 internal links),
   "vertical": string, "category": string, "author": string (byline text), "tags": string[],
   "featured_image": string ("" if unknown), "status": "draft"|"published",
-  "meta_title": string, "meta_description": string, "meta_keywords": string }`;
+  "meta_title": string, "meta_description": string, "meta_keywords": string,
+  "cover_kicker": string, "cover_svg": string,
+  "entity_suggestions": [{ "entity_type": "college"|"course"|"exam"|"career"|"scholarship"|"article", "entity_slug": string, "label": string }],
+  "research_notes": string }`;
     case "promoted_programs":
       return `Array of objects, FILL EVERY FIELD:
 { "slug": string, "title": string, "college_name": string,
@@ -280,6 +334,10 @@ Deno.serve(async (req) => {
       scholarships: internal.scholarships.map((c: any) => ({ s: c.slug, n: c.title })),
       careers: internal.careers.map((c: any) => ({ s: c.slug, n: c.name })),
     });
+    const articleSignals = entity_type === "articles" && opts.automatic_research
+      ? await fetchArticleResearchSignals(opts.competitor_sources?.length ? opts.competitor_sources : DEFAULT_ARTICLE_RESEARCH_SOURCES)
+      : [];
+    const wordLimit = Number(opts.word_limit || (depth === "concise" ? 900 : depth === "standard" ? 1300 : 1800));
 
     const userPrompt = `Generate ${entity_type} records.
 
@@ -292,6 +350,10 @@ CONTENT BRIEF (apply to every record):
 ${opts.vertical ? `- Vertical: ${opts.vertical}` : ""}
 ${opts.category_hint ? `- Preferred category: ${opts.category_hint}` : ""}
 ${opts.author_name ? `- Byline / author display name: ${opts.author_name}` : ""}
+${entity_type === "articles" ? `- Target article length: around ${wordLimit} words
+- Editorial style: original, natural, plain Indian education guidance. Use normal small hyphen '-' only. Do not use em dash.
+- Optimise for SEO, GEO and AEO with useful headings, concise definitions, FAQ-ready answers and internal links.
+- Do not claim "0 AI" or "human-written". Make the article genuinely useful and editor-review ready.` : ""}
 
 WORKFLOW (must follow in order for every record):
  1. Identify the OFFICIAL website of this entity (institute's own domain / NTA / UGC / AICTE / NAAC / scholarships.gov.in etc.).
@@ -307,6 +369,12 @@ Existing ${meta.keyField}s already in our DB (regenerate them anyway with the LA
 
 INTERNAL_DB (use these for internal hyperlinks inside HTML content fields):
 ${internalDbStr}
+
+${articleSignals.length ? `COMPETITOR AND OWN-SITE RESEARCH SIGNALS:
+Use these only to understand current topics, angles and gaps. Never copy titles, wording, paragraph structure, claims, images or proprietary analysis.
+${JSON.stringify(articleSignals)}
+
+For each generated article, include the most relevant entity_suggestions using slugs from INTERNAL_DB when the topic clearly maps to a college, course, exam, career or scholarship.` : ""}
 
 Output schema:
 ${schemaFor(entity_type)}
@@ -415,6 +483,11 @@ Return ONLY a JSON array. No markdown, no commentary.`;
     const HAS_STATUS = new Set(["colleges","courses","exams","career_profiles","articles","promoted_programs"]);
     const stamped = arr.map(r => {
       const out: any = { ...r };
+      if (meta.table === "articles") {
+        const title = String(out.title || out.name || topic || "DekhoCampus update");
+        out.cover_svg = out.cover_svg || coverSvg(title, out.cover_kicker || out.category || "Education update");
+        if (!Array.isArray(out.entity_suggestions)) out.entity_suggestions = [];
+      }
       if (opts.author_id && HAS_AUTHOR.has(meta.table)) out.author_id = opts.author_id;
       if (opts.author_name && meta.table === "articles" && !out.author) out.author = opts.author_name;
       if (HAS_STATUS.has(meta.table) && !out.status) out.status = opts.status || "draft";

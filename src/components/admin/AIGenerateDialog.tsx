@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sparkles, Loader2, CheckCircle2, PlusCircle, RefreshCw, ShieldCheck, Cpu } from "lucide-react";
+import { Sparkles, Loader2, CheckCircle2, PlusCircle, RefreshCw, ShieldCheck, Cpu, Search, ImageIcon, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { slugify } from "@/lib/slugify";
@@ -32,6 +32,20 @@ const STATIC_MODELS: ModelOption[] = [
   { value: "claude",     label: "Claude (gateway)", hint: "Falls back to GPT-5.4 Pro without a key",  tone: "from-orange-500/15 to-orange-500/5 border-orange-500/30 text-orange-700" },
   { value: "grok",       label: "Grok (gateway)",   hint: "Falls back to Gemini without a key",       tone: "from-zinc-500/15 to-zinc-500/5 border-zinc-500/30 text-zinc-700" },
 ];
+const ARTICLE_RESEARCH_SOURCES = [
+  "https://www.shiksha.com/news",
+  "https://www.careers360.com/articles",
+  "https://news.kollegeapply.com",
+  "https://collegedunia.com/news",
+  "https://www.collegedekho.com/news",
+  "https://www.pagalguy.com/mba/articles",
+  "https://www.dekhocampus.in/news",
+];
+const WORD_LIMITS = [
+  { value: 900, label: "Quick", hint: "900 words" },
+  { value: 1300, label: "Balanced", hint: "1,300 words" },
+  { value: 1800, label: "Deep", hint: "1,800 words" },
+];
 
 type ItemRow = Record<string, any> & { _action?: "insert" | "upsert"; _key?: string };
 
@@ -54,7 +68,10 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
   const [depth, setDepth] = useState<"concise" | "standard" | "in-depth">("in-depth");
   const [language, setLanguage] = useState<"English" | "Hindi" | "Bilingual">("English");
   const [region, setRegion] = useState("India");
-  const [status, setStatus] = useState<"draft" | "published">("draft");
+  const [status, setStatus] = useState<"Draft" | "Published">("Draft");
+  const [automaticResearch, setAutomaticResearch] = useState(true);
+  const [wordLimit, setWordLimit] = useState(1300);
+  const [researchSources, setResearchSources] = useState(ARTICLE_RESEARCH_SOURCES.join("\n"));
 
   const [providerOptions, setProviderOptions] = useState<ModelOption[]>(STATIC_MODELS);
 
@@ -114,6 +131,9 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
             tone, audience, depth, language, region,
             status, is_active: true,
             model,
+            automatic_research: entityType === "articles" ? automaticResearch : false,
+            competitor_sources: entityType === "articles" ? researchSources.split("\n").map(s => s.trim()).filter(Boolean) : undefined,
+            word_limit: entityType === "articles" ? wordLimit : undefined,
           },
         },
       });
@@ -135,11 +155,53 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
     }
   };
 
+  const uploadCover = async (row: ItemRow) => {
+    if (entityType !== "articles" || !row.cover_svg) return row.featured_image || "";
+    const slug = slugify(row.slug || row.title || "article");
+    const blob = new Blob([row.cover_svg], { type: "image/svg+xml" });
+    const path = `blog-covers/${slug}-${Date.now()}.svg`;
+    const { error } = await supabase.storage.from("admin-uploads").upload(path, blob, { contentType: "image/svg+xml", upsert: false });
+    if (error) throw error;
+    return supabase.storage.from("admin-uploads").getPublicUrl(path).data.publicUrl;
+  };
+
   const commit = async () => {
     const payload = visible.map(({ _action, _key, ...r }) => r);
     if (!payload.length) return;
     setBusy(true);
     try {
+      if (entityType === "articles") {
+        let written = 0;
+        for (const row of payload) {
+          const { entity_suggestions, research_notes, cover_svg, cover_kicker, ...articleRow } = row;
+          const featuredImage = await uploadCover(row);
+          const normalized = {
+            ...articleRow,
+            featured_image: featuredImage || articleRow.featured_image || "",
+            status: articleRow.status === "published" ? "Published" : articleRow.status === "draft" ? "Draft" : articleRow.status || status,
+            tags: Array.from(new Set([...(Array.isArray(articleRow.tags) ? articleRow.tags : []), automaticResearch ? "research-assisted" : "ai-assisted"])),
+          };
+          const { data: article, error } = await (supabase as any)
+            .from(table)
+            .upsert(normalized, { onConflict: upsertKey, ignoreDuplicates: false })
+            .select("id")
+            .single();
+          if (error) throw error;
+          written += 1;
+          const suggestions = Array.isArray(entity_suggestions) ? entity_suggestions : [];
+          for (const suggestion of suggestions) {
+            if (!suggestion?.entity_type || !suggestion?.entity_slug) continue;
+            await (supabase as any).from("article_links").upsert({
+              article_id: article.id,
+              entity_type: suggestion.entity_type,
+              entity_slug: suggestion.entity_slug,
+            }, { onConflict: "article_id,entity_type,entity_slug" });
+          }
+        }
+        toast.success(`Wrote ${written} article${written === 1 ? "" : "s"} with images and entity tags`);
+        setOpen(false); reset(); onDone?.();
+        return;
+      }
       const chunk = 50;
       let written = 0;
       for (let i = 0; i < payload.length; i += chunk) {
@@ -217,6 +279,42 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
             </div>
 
             {/* Inputs */}
+            {entityType === "articles" && (
+              <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Search className="w-4 h-4 text-primary" />
+                    <div>
+                      <Label className="text-sm font-semibold">Automatic research</Label>
+                      <p className="text-xs text-muted-foreground">Competitor and DekhoCampus signals are used for topic gaps only. Output stays original and reviewable.</p>
+                    </div>
+                  </div>
+                  <Button type="button" size="sm" variant={automaticResearch ? "default" : "outline"} onClick={() => setAutomaticResearch(v => !v)} className="rounded-xl">
+                    {automaticResearch ? "Research on" : "Research off"}
+                  </Button>
+                </div>
+                <div>
+                  <Label className="text-xs">Word limit options</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {WORD_LIMITS.map(option => (
+                      <Button key={option.value} type="button" size="sm" variant={wordLimit === option.value ? "default" : "outline"} onClick={() => setWordLimit(option.value)} className="rounded-xl">
+                        {option.label} · {option.hint}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Research sources</Label>
+                  <Textarea
+                    rows={4}
+                    value={researchSources}
+                    onChange={(e) => setResearchSources(e.target.value)}
+                    className="rounded-lg mt-1.5 text-xs"
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-medium">Topic (AI expands to a list)</Label>
@@ -307,8 +405,8 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
                   <Label className="text-xs">Publish status (after write)</Label>
                   <select value={status} onChange={(e) => setStatus(e.target.value as any)}
                     className="w-full h-9 rounded-lg border border-border bg-card px-3 text-sm">
-                    <option value="draft">Draft (review before publishing)</option>
-                    <option value="published">Published immediately</option>
+                    <option value="Draft">Draft (review before publishing)</option>
+                    <option value="Published">Published immediately</option>
                   </select>
                 </div>
               </div>
@@ -363,7 +461,19 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium truncate">{r.name || r.title || r.question || r._key}</div>
                           <div className="text-[11px] text-muted-foreground truncate">{r._key}</div>
+                          {entityType === "articles" && Array.isArray(r.entity_suggestions) && r.entity_suggestions.length > 0 && (
+                            <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground truncate">
+                              <Link2 className="w-3 h-3" />
+                              {r.entity_suggestions.slice(0, 4).map((s: any) => s.label || s.entity_slug).join(" · ")}
+                            </div>
+                          )}
                         </div>
+                        {entityType === "articles" && r.cover_svg && (
+                          <div className="hidden sm:flex items-center gap-2 text-[11px] text-muted-foreground">
+                            <ImageIcon className="w-3.5 h-3.5" />
+                            Image ready
+                          </div>
+                        )}
                       </div>
                     );
                   })}
