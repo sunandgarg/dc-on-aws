@@ -159,8 +159,15 @@ async function mirror(client: SupabaseClient, candidates: Candidate[]) {
       replacements.set(source, client.storage.from("legacy-public-assets").getPublicUrl(path).data.publicUrl); report.asset_mirror.mirrored += 1;
     } catch (error) { report.asset_mirror.failed.push({ url: source, message: error instanceof Error ? error.message : "asset download failed" }); }
   }
-  for (const candidate of candidates) for (const field of ["image", "logo", "brochure_url", "featured_image"]) { const source = url(candidate.payload[field]); if (source && replacements.has(source)) candidate.payload[field] = replacements.get(source)!; }
-  for (const field of ["carousel_images", "gallery_images"]) candidate.payload[field] = stringList(candidate.payload[field]).map((item) => replacements.get(item) ?? item);
+  for (const candidate of candidates) {
+    for (const field of ["image", "logo", "brochure_url", "featured_image"]) {
+      const source = url(candidate.payload[field]);
+      if (source && replacements.has(source)) candidate.payload[field] = replacements.get(source)!;
+    }
+    for (const field of ["carousel_images", "gallery_images"]) {
+      candidate.payload[field] = stringList(candidate.payload[field]).map((item) => replacements.get(item) ?? item);
+    }
+  }
 }
 
 async function insert(client: SupabaseClient, entity: Entity, candidates: Candidate[], known: Set<string>) {
