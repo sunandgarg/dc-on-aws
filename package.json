@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "postbuild": "tsx scripts/generate-sitemap.ts",
-    "deploy:prod": "bash scripts/deploy-prod.sh"
+    "deploy:prod": "bash scripts/deploy-prod.sh",
+    "import:legacy": "tsx scripts/import-legacy-directus.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
