@@ -103,6 +103,39 @@ export function MegaMenu() {
 
   const sections: Section[] = [
     {
+      label: "CAT Universe",
+      href: "/cat-universe",
+      columns: [
+        {
+          title: "Post Exam",
+          items: [
+            { label: "CAT Score Calculator", href: "/cat-universe/cat-score-calculator" },
+            { label: "XAT Score Calculator", href: "/cat-universe/xat-score-calculator" },
+            { label: "CMAT Score Calculator", href: "/cat-universe/cmat-score-calculator" },
+            { label: "SOP / WAT Support", href: "/cat-universe/sop-exam-score-wat" },
+          ],
+        },
+        {
+          title: "Post Result",
+          items: [
+            { label: "IIM Call Predictor", href: "/cat-universe/iim-call-predictor" },
+            { label: "Interview Calls / Converts", href: "/cat-universe/interview-calls-converts" },
+            { label: "Mock Interview & Dockets", href: "/cat-universe/mock-interview-and-dockets" },
+            { label: "All CAT Universe →", href: "/cat-universe" },
+          ],
+        },
+        {
+          title: "Important Cut-offs",
+          items: [
+            { label: "CAT Based Colleges", href: "/cat-universe/cat-based-college-cutoffs" },
+            { label: "XAT Based Colleges", href: "/cat-universe/xat-based-college-cutoffs" },
+            { label: "IITs CAT Cutoff", href: "/cat-universe/iits-cat-cutoff" },
+            { label: "CMAT Colleges & Cutoffs", href: "/cat-universe/cmat-based-colleges-and-cutoffs" },
+          ],
+        },
+      ],
+    },
+    {
       label: "Colleges",
       columns: [
         { title: "By Stream", items: (STREAM_CATEGORIES as readonly any[]).slice(0, 8).map((s: any) => ({ label: s.label, href: `/colleges?stream=${encodeURIComponent(s.id)}` })).concat([{ label: "All colleges →", href: "/colleges" }]) },
@@ -215,6 +248,7 @@ export function MegaMenu() {
   ];
 
   const iconFor = (l: string) => {
+    if (l === "CAT Universe") return Sparkles;
     if (l === "Colleges") return GraduationCap;
     if (l === "Courses") return BookOpen;
     if (l === "Exams") return FileText;

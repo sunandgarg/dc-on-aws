@@ -12,6 +12,7 @@ type QL =
 const links: QL[] = [
   // Priority order requested
   { icon: Laptop, label: "Online Degrees", sectionId: "online-education-heading" },
+  { icon: Sparkles, label: "CAT Universe", href: "/cat-universe" },
   { icon: Sparkles, label: "Earn IIT/IIM/Dr. Tag", sectionId: "trending-programs-heading" },
   { icon: Globe, label: "Study Abroad", sectionId: "online-education-heading" },
   // Then the rest
