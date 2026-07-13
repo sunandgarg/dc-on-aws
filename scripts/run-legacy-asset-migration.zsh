@@ -7,6 +7,7 @@ PROJECT_REF="${PROJECT_REF:-kozdctbbvrnyddlftmvf}"
 SUPABASE_URL="${SUPABASE_URL:-https://${PROJECT_REF}.supabase.co}"
 NODE_BIN="${NODE_BIN:-/opt/homebrew/opt/node@20/bin/node}"
 REPORT_DIR="${ROOT_DIR}/reports"
+LOCAL_BACKUP_ROOT="${LOCAL_BACKUP_ROOT:-${ROOT_DIR}/tmp/legacy-asset-backup}"
 KEYS_FILE="$(mktemp)"
 
 cleanup() {
@@ -42,6 +43,7 @@ for pass in 1 2 3; do
     --checkpoint-size 1000 \
     --concurrency 12 \
     --update-concurrency 15 \
+    --local-backup-root "${LOCAL_BACKUP_ROOT}" \
     --report "${report}"
 
   failed="$(jq -r '.failed // 0' "${report}")"

@@ -12,14 +12,23 @@
  */
 import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { extname, resolve } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 
 type Json = Record<string, unknown>;
 type FieldConfig = { name: string; array?: boolean };
 type TableConfig = { table: string; fields: FieldConfig[] };
 type Reference = { table: string; id: string; slug: string; field: string; array: boolean; original: string | string[] };
-type AssetResult = { source: string; destination?: string; source_bytes?: number; webp_bytes?: number; status: "mirrored" | "failed"; message?: string };
+type AssetResult = {
+  source: string;
+  destination?: string;
+  local_original_path?: string;
+  local_webp_path?: string;
+  source_bytes?: number;
+  webp_bytes?: number;
+  status: "mirrored" | "failed";
+  message?: string;
+};
 
 const TABLES: TableConfig[] = [
   { table: "colleges", fields: [
@@ -57,6 +66,9 @@ const maxInputBytes = Math.max(1_000_000, Number(option("--max-input-bytes", "26
 const requestedLimit = Math.max(0, Number(option("--limit", "0")) || 0);
 const checkpointSize = Math.max(50, Math.min(5000, Number(option("--checkpoint-size", "1000")) || 1000));
 const migrateAll = has("--all");
+const localBackupRoot = option("--local-backup-root");
+const localOriginalsDir = localBackupRoot ? resolve(localBackupRoot, "originals") : null;
+const localWebpDir = localBackupRoot ? resolve(localBackupRoot, "webp") : null;
 const allowedHosts = new Set([...DEFAULT_HOSTS, ...options("--allow-host").map((host) => host.toLowerCase())]);
 
 if (!projectRef) throw new Error("Pass --project-ref to make the destination explicit.");
@@ -70,7 +82,17 @@ if (destinationRef !== projectRef) throw new Error(`Destination mismatch: URL po
 const client = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 const report = {
   generated_at: new Date().toISOString(), mode: apply ? "apply" : "inventory", project_ref: projectRef, bucket,
-  settings: { concurrency, update_concurrency: updateConcurrency, checkpoint_size: checkpointSize, quality, max_width: maxWidth, max_height: maxHeight, max_input_bytes: maxInputBytes, allowed_hosts: [...allowedHosts] },
+  settings: {
+    concurrency,
+    update_concurrency: updateConcurrency,
+    checkpoint_size: checkpointSize,
+    quality,
+    max_width: maxWidth,
+    max_height: maxHeight,
+    max_input_bytes: maxInputBytes,
+    allowed_hosts: [...allowedHosts],
+    local_backup_root: localBackupRoot,
+  },
   scanned_rows: {} as Record<string, number>, unique_assets: 0, scheduled_assets: 0, references: 0, mirrored: 0, failed: 0,
   source_bytes: 0, webp_bytes: 0, rows_updated: 0, update_failures: [] as Array<{ table: string; slug: string; message: string }>,
   assets: [] as AssetResult[],
@@ -125,6 +147,23 @@ async function saveReport() {
   await writeFile(reportPath, JSON.stringify(report, null, 2));
 }
 
+async function saveLocalCopies(source: string, input: Uint8Array, webp: Uint8Array) {
+  if (!localOriginalsDir || !localWebpDir) return {};
+
+  const parsed = new URL(source);
+  const hash = createHash("sha256").update(source).digest("hex");
+  const sourceExtension = extname(parsed.pathname).toLowerCase() || ".bin";
+  const originalPath = resolve(localOriginalsDir, hash.slice(0, 2), `${hash}${sourceExtension}`);
+  const webpPath = resolve(localWebpDir, hash.slice(0, 2), `${hash}.webp`);
+
+  await mkdir(resolve(originalPath, ".."), { recursive: true });
+  await mkdir(resolve(webpPath, ".."), { recursive: true });
+  await writeFile(originalPath, input);
+  await writeFile(webpPath, webp);
+
+  return { local_original_path: originalPath, local_webp_path: webpPath };
+}
+
 async function mirrorAsset(source: string, sharp: Awaited<ReturnType<typeof loadSharp>>, index: number, total: number): Promise<AssetResult> {
   try {
     const response = await fetch(source, { redirect: "follow", signal: AbortSignal.timeout(30_000) });
@@ -140,6 +179,7 @@ async function mirrorAsset(source: string, sharp: Awaited<ReturnType<typeof load
       .resize({ width: maxWidth, height: maxHeight, fit: "inside", withoutEnlargement: true })
       .webp({ quality, effort: 4, smartSubsample: true })
       .toBuffer());
+    const localCopies = await saveLocalCopies(source, input, webp);
     const hash = createHash("sha256").update(source).digest("hex");
     const objectPath = `webp/${hash.slice(0, 2)}/${hash}.webp`;
     const { error } = await client.storage.from(bucket).upload(objectPath, webp, { contentType: "image/webp", cacheControl: "31536000", upsert: true });
@@ -149,7 +189,7 @@ async function mirrorAsset(source: string, sharp: Awaited<ReturnType<typeof load
     if (verification.error || !verification.data?.some((item) => item.name === filename)) throw new Error(`verification failed: ${verification.error?.message ?? "object not listed"}`);
     const destination = client.storage.from(bucket).getPublicUrl(objectPath).data.publicUrl;
     if ((index + 1) % 50 === 0 || index + 1 === total) console.log(`[assets] processed ${index + 1}/${total}`);
-    return { source, destination, source_bytes: input.byteLength, webp_bytes: webp.byteLength, status: "mirrored" };
+    return { source, destination, source_bytes: input.byteLength, webp_bytes: webp.byteLength, status: "mirrored", ...localCopies };
   } catch (error) {
     return { source, status: "failed", message: error instanceof Error ? error.message : String(error) };
   }

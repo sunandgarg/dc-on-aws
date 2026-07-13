@@ -19,6 +19,17 @@ import { trackEvent } from "@/lib/analytics";
 
 const RELOAD_THROTTLE_MS = 10_000;
 const RETRY_DELAY_MS = 400;
+const RECOVERY_PARAM = "_r";
+
+function cleanupRecoveryUrl() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has(RECOVERY_PARAM)) return;
+  url.searchParams.delete(RECOVERY_PARAM);
+  window.history.replaceState(window.history.state, "", url.toString());
+}
+
+cleanupRecoveryUrl();
 
 function isChunkError(err: unknown): boolean {
   return /Loading chunk|Loading CSS chunk|dynamically imported module|Failed to fetch|ChunkLoadError/i.test(
@@ -74,7 +85,6 @@ export function lazyRetry<T extends ComponentType<any>>(
   name = "chunk",
 ): React.LazyExoticComponent<T> {
   return lazy(async () => {
-    const reloadKey = `__lazyRetry_reloaded_${name}`;
     try {
       return await factory();
     } catch (err) {
@@ -93,11 +103,18 @@ export function lazyRetry<T extends ComponentType<any>>(
       } catch (err2) {
         if (typeof window === "undefined") throw err2;
 
-        // Do NOT silently reload the page - that caused the whole site to
-        // appear to "refresh itself" after a deploy or transient network blip.
-        // Instead, always rethrow so ChunkErrorBoundary renders its friendly
-        // "We've updated the app - Retry loading" UI and the user explicitly
-        // chooses to reload.
+        const reloadKey = `__lazyRetry_reloaded_${name}`;
+        const lastReload = Number(sessionStorage.getItem(reloadKey) || "0");
+        const throttledMs = Date.now() - lastReload;
+        logChunkFailure(name, 2, err2, throttledMs);
+
+        // Try one controlled self-recovery for stale chunk manifests. If the
+        // updated bundle still fails after that, the boundary renders the UI.
+        if (throttledMs > RELOAD_THROTTLE_MS) {
+          sessionStorage.setItem(reloadKey, String(Date.now()));
+          await recoverFromChunkFailure();
+        }
+
         throw err2;
       }
     }
@@ -109,6 +126,6 @@ export async function recoverFromChunkFailure() {
   if (typeof window === "undefined") return;
   await clearBrowserCaches();
   const url = new URL(window.location.href);
-  url.searchParams.set("_r", Date.now().toString(36));
+  url.searchParams.set(RECOVERY_PARAM, Date.now().toString(36));
   window.location.replace(url.toString());
 }
