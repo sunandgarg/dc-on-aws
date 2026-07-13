@@ -206,8 +206,17 @@ function sanitizePayload(entity: Entity, payload: Json): Json {
       image: url(base.image) ?? "",
       logo: url(base.logo) ?? "",
       brochure_url: url(base.brochure_url) ?? "",
+      eligibility_criteria: text(base.eligibility_criteria) ?? "",
+      admission_process: text(base.admission_process) ?? "",
+      scholarship_details: text(base.scholarship_details) ?? "",
+      hostel_life: text(base.hostel_life) ?? "",
       carousel_images: stringList(base.carousel_images).map(url).filter((item): item is string => Boolean(item)),
       gallery_images: stringList(base.gallery_images).map(url).filter((item): item is string => Boolean(item)),
+      cutoff: text(base.cutoff) ?? "",
+      course_fee_content: text(base.course_fee_content) ?? "",
+      placement_content: text(base.placement_content) ?? "",
+      rankings_content: text(base.rankings_content) ?? "",
+      facilities_content: text(base.facilities_content) ?? "",
       categories: stringList(base.categories).map((item) => titleCase(item) ?? item),
       related_exams: slugList(base.related_exams),
       related_courses: slugList(base.related_courses),
@@ -224,6 +233,8 @@ function sanitizePayload(entity: Entity, payload: Json): Json {
       meta_title: text(base.meta_title, 500) ?? "",
       meta_description: text(base.meta_description, 5_000) ?? "",
       meta_keywords: text(base.meta_keywords, 5_000) ?? "",
+      banner_ad_image: url(base.banner_ad_image) ?? "",
+      square_ad_image: url(base.square_ad_image) ?? "",
     };
   }
   if (entity === "courses") {
@@ -395,6 +406,23 @@ async function existingSlugs(client: SupabaseClient, entity: Entity) {
   while (true) { const { data, error } = await client.from(entity).select("slug").range(from, from + 999); if (error) throw error; for (const row of data ?? []) if (typeof row.slug === "string") values.add(row.slug); if (!data || data.length < 1000) return values; from += 1000; }
 }
 
+/**
+ * The database validates related_* arrays.  Legacy pages contain aliases and
+ * retired exams (for example `gmat`) that do not have a corresponding row in
+ * this project.  Keep only links that exist after the course/exam sync rather
+ * than rejecting an otherwise valid college.
+ */
+async function reconcileCollegeRelations(client: SupabaseClient, candidates: Candidate[]) {
+  const [courseSlugs, examSlugs] = await Promise.all([
+    existingSlugs(client, "courses"),
+    existingSlugs(client, "exams"),
+  ]);
+  for (const candidate of candidates) {
+    candidate.payload.related_courses = slugList(candidate.payload.related_courses).filter((slug) => courseSlugs.has(slug));
+    candidate.payload.related_exams = slugList(candidate.payload.related_exams).filter((slug) => examSlugs.has(slug));
+  }
+}
+
 function collectAssetUrls(payload: Json) {
   const assets: string[] = [];
   for (const field of ["image", "logo", "brochure_url", "featured_image"]) { const value = url(payload[field]); if (value) assets.push(value); }
@@ -484,7 +512,15 @@ async function main() {
     for (const candidate of candidates) if (current.has(candidate.slug)) report.entities[entity].existing_in_supabase.push(candidate.slug);
   }
   if (apply && mirrorAssets) await mirror(client!, flat);
-  if (apply) for (const entity of ["colleges", "courses", "exams", "articles"] as Entity[]) await insert(client!, entity, [...all.get(entity)!.values()], await existingSlugs(client!, entity));
+  if (apply) {
+    // Courses and exams must be available before their college relationships
+    // are validated by Postgres.
+    for (const entity of ["courses", "exams"] as Entity[]) await insert(client!, entity, [...all.get(entity)!.values()], await existingSlugs(client!, entity));
+    const colleges = [...all.get("colleges")!.values()];
+    await reconcileCollegeRelations(client!, colleges);
+    await insert(client!, "colleges", colleges, await existingSlugs(client!, "colleges"));
+    await insert(client!, "articles", [...all.get("articles")!.values()], await existingSlugs(client!, "articles"));
+  }
   for (const entity of Object.keys(report.entities) as Entity[]) {
     const stats = report.entities[entity]; stats.duplicate_in_source = [...new Set(stats.duplicate_in_source)].sort(); stats.existing_in_supabase = [...new Set(stats.existing_in_supabase)].sort();
   }
