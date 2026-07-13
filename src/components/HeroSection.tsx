@@ -27,6 +27,7 @@ import iconExam from "@/assets/cat-exam.png";
 import iconApplication from "@/assets/cat-application.png";
 import iconReviews from "@/assets/cat-reviews.png";
 import iconNews from "@/assets/cat-news.png";
+import { HeroCounsellingCard } from "@/components/HeroCounsellingCard";
 
 const rotatingWords = ["College", "Course", "Career", "Exam", "Future"];
 const wordColors = ["text-gradient", "text-gradient-accent", "text-gradient", "text-gradient-accent", "text-gradient"];
@@ -357,14 +358,16 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
         />
       </div>
 
-      <div className="container relative z-10 px-4 py-8 md:py-16 lg:py-20">
-        <div className="max-w-4xl mx-auto text-center space-y-5 md:space-y-8">
-          {/* AI Badge + Built by IIT Delhi Alumni hero statement */}
-          <motion.div
+      <div className="container relative z-10 px-4 py-8 md:py-14 lg:py-16">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)] lg:gap-12">
+            <div className="space-y-5 text-left md:space-y-7">
+              {/* AI Badge + Built by IIT Delhi Alumni hero statement */}
+              <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="flex flex-col items-center justify-center gap-4"
+            className="flex flex-col items-start justify-start gap-4"
           >
             <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/25">
               <img src={dcLogo} alt="DekhoCampus" className="w-4 h-4 object-contain" />
@@ -377,7 +380,7 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25, type: "spring", stiffness: 200, damping: 22 }}
-              className="relative flex flex-col items-center gap-2 max-w-2xl"
+              className="relative flex max-w-2xl flex-col items-start gap-2 text-left"
               aria-label="An Initiative by IIT Delhi Alumni - trusted by 1 lakh plus students"
             >
               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight leading-tight text-primary">
@@ -421,8 +424,8 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="max-w-2xl mx-auto"
-          >
+                className="max-w-2xl"
+              >
             <form onSubmit={handleAskAI}>
               <div className="relative">
                 <div
@@ -512,7 +515,7 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
             </form>
 
             {/* Prompt chips */}
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 md:gap-2">
+            <div className="mt-3 flex flex-wrap items-center justify-start gap-1.5 md:gap-2">
               <Zap className="w-3.5 h-3.5 text-accent" />
               <span className="text-xs text-muted-foreground font-medium">Try:</span>
               {suggestedPrompts.map((prompt) => (
@@ -524,15 +527,20 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
                   {prompt}
                 </button>
               ))}
-            </div>
+              </div>
           </motion.div>
+
+            </div>
+
+            <HeroCounsellingCard onStart={(message) => handleSuggestionClick(message)} />
+          </div>
 
           {/* Big stat tiles (dekhocampus-style) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="max-w-5xl mx-auto pt-3 -mx-4 px-4 md:mx-0 md:px-0"
+            className="mx-auto mt-8 max-w-7xl px-4 pt-3 -mx-4 md:mx-0 md:px-0 lg:mt-10"
           >
             <div className="flex md:grid md:grid-cols-6 gap-3 md:gap-5 overflow-x-auto md:overflow-visible scrollbar-hide snap-x snap-mandatory pb-1">
               {quickCategories.map((cat, index) => (
@@ -554,6 +562,14 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
               ))}
             </div>
           </motion.div>
+
+          <div className="mt-7 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/60 bg-border/60 shadow-sm sm:grid-cols-3 lg:grid-cols-6" aria-label="DekhoCampus trust markers">
+            {["13,000+ colleges", "1L+ students guided", "Verified fees", "AI + human guidance", "No agent markup", "Built for Bharat"].map((item) => (
+              <div key={item} className="bg-card/90 px-3 py-3 text-center text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground backdrop-blur sm:text-[11px]">
+                {item}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
