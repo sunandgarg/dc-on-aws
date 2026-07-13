@@ -72,7 +72,9 @@ export function BlogAutoAgentPanel({ onArticlesCreated }: { onArticlesCreated?: 
     if (showLoader) setLoading(true);
     try {
       const [{ data: settingsData }, { data: sourceData }, { data: runData }] = await Promise.all([
-        (supabase as any).from("blog_auto_agent_settings").select("*").eq("id", "default").maybeSingle(),
+        (supabase as any).from("blog_auto_agent_settings")
+          .select("enabled,interval_minutes,posts_per_run,daily_post_cap,publish_status,model_provider,word_limit,last_run_at,next_run_at")
+          .eq("id", "default").maybeSingle(),
         (supabase as any).from("blog_research_sources").select("*").order("display_order"),
         (supabase as any).from("blog_auto_agent_runs").select("*").order("started_at", { ascending: false }).limit(5),
       ]);
