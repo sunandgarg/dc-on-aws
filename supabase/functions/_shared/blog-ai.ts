@@ -25,7 +25,7 @@ function normalizeClaudeTextModel(value: string | null | undefined) {
 
 let resolvedClaudeModel = "";
 
-async function resolveClaudeTextModel(config: BlogAiConfig) {
+export async function resolveClaudeTextModel(config: BlogAiConfig) {
   if (resolvedClaudeModel) return resolvedClaudeModel;
   const response = await fetch("https://api.anthropic.com/v1/models?limit=100", {
     headers: { "x-api-key": config.claudeKey, "anthropic-version": "2023-06-01" },

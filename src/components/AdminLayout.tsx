@@ -1,6 +1,6 @@
 import { type ElementType, type ReactNode, useCallback, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Megaphone, Star, Users, GraduationCap, BookOpen, FileText, HelpCircle, Newspaper, Lightbulb, Image, Handshake, Bot, Phone, Database, Scale, Map, Briefcase, ClipboardList, UserCircle, UserCheck, Building2, Award, Sparkles, MapPin, IndianRupee, Library, BarChart3, ChevronDown, Settings, FolderTree, RefreshCw, Network, ExternalLink, Home, Search, Menu, X, Rocket, PanelTop } from "lucide-react";
+import { LayoutDashboard, Megaphone, Star, Users, GraduationCap, BookOpen, FileText, HelpCircle, Newspaper, Lightbulb, Image, Handshake, Bot, Phone, Database, Scale, Map, Briefcase, ClipboardList, UserCircle, UserCheck, Building2, Award, Sparkles, MapPin, IndianRupee, Library, BarChart3, ChevronDown, Settings, FolderTree, RefreshCw, Network, ExternalLink, Home, Search, Menu, X, Rocket, PanelTop, DatabaseZap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { Module } from "@/lib/rbac";
@@ -53,6 +53,7 @@ const groups: NavGroup[] = [
       { label: "Colleges", href: "/admin/colleges", icon: GraduationCap, module: "colleges" },
       { label: "Courses", href: "/admin/courses", icon: BookOpen, module: "courses" },
       { label: "Exams", href: "/admin/exams", icon: FileText, module: "exams" },
+      { label: "Clean Data", href: "/admin/clean-data", icon: DatabaseZap, module: "content" },
       { label: "Articles", href: "/admin/articles", icon: Newspaper, module: "articles" },
       { label: "Article Tags", href: "/admin/tags", icon: Sparkles, module: "articles" },
       { label: "Article Categories", href: "/admin/article-categories", icon: Sparkles, module: "articles" },

@@ -2,3 +2,6 @@ project_id = "kozdctbbvrnyddlftmvf"
 
 [functions.admin-blog-agent]
 verify_jwt = false
+
+[functions.admin-data-cleaner]
+verify_jwt = false

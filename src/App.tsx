@@ -66,6 +66,7 @@ const AdminColleges = lazyRetry(() => import("./pages/AdminColleges"), "AdminCol
 const AdminCourses = lazyRetry(() => import("./pages/AdminCourses"), "AdminCourses");
 const AdminExams = lazyRetry(() => import("./pages/AdminExams"), "AdminExams");
 const AdminArticles = lazyRetry(() => import("./pages/AdminArticles"), "AdminArticles");
+const AdminDataCleaner = lazyRetry(() => import("./pages/AdminDataCleaner"), "AdminDataCleaner");
 const AdminDocs = lazyRetry(() => import("./pages/AdminDocs"), "AdminDocs");
 const AdminBanners = lazyRetry(() => import("./pages/AdminBanners"), "AdminBanners");
 const AdminHeroSettings = lazyRetry(() => import("./pages/AdminHeroSettings"), "AdminHeroSettings");
@@ -325,6 +326,7 @@ const App = () => (
               <Route path="/admin/lead-push-legacy" element={<ProtectedRoute requireAdmin><AdminLeadPushHub /></ProtectedRoute>} />
               <Route path="/admin/lead-push-legacy/manage" element={<ProtectedRoute requireAdmin><AdminLeadPush /></ProtectedRoute>} />
               <Route path="/admin/articles" element={<ProtectedRoute module="articles"><AdminArticles /></ProtectedRoute>} />
+              <Route path="/admin/clean-data" element={<ProtectedRoute module="content"><AdminDataCleaner /></ProtectedRoute>} />
               <Route path="/admin/content" element={<ProtectedRoute module="content"><AdminContent /></ProtectedRoute>} />
               <Route path="/admin/docs" element={<ProtectedRoute module="docs"><AdminDocs /></ProtectedRoute>} />
               <Route path="/admin/banners" element={<ProtectedRoute module="banners"><AdminBanners /></ProtectedRoute>} />
