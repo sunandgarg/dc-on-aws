@@ -111,7 +111,27 @@ async function callModel(admin: any, providerName: string, prompt: string) {
 
 function parseJson(raw: string) {
   const cleaned = String(raw || "{}").replace(/^```json/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
-  return JSON.parse(cleaned);
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start >= 0 && end > start) return JSON.parse(cleaned.slice(start, end + 1));
+    throw new Error("AI response did not contain a JSON object");
+  }
+}
+
+async function parseOrRepairJson(blogAi: any, raw: string) {
+  try {
+    return parseJson(raw);
+  } catch (firstError) {
+    const repaired = await generateBlogJson(blogAi, `Repair the following malformed JSON into one valid JSON object. Preserve every factual value and all HTML content. Escape quotes, backslashes and newlines correctly. Remove markdown fences. Return only the repaired JSON object.\n\n${raw}`);
+    try {
+      return parseJson(repaired);
+    } catch {
+      throw new Error(`AI returned malformed JSON and automatic repair failed: ${firstError instanceof Error ? firstError.message : String(firstError)}`);
+    }
+  }
 }
 
 async function uploadCover(admin: any, slug: string, svg: string) {
@@ -229,7 +249,7 @@ Deno.serve(async (req) => {
 
     const topicPrompt = `You are the DekhoCampus education-news editor. Today is ${new Date().toISOString().slice(0, 10)} in India.\n\nResearch signals from competitor and own website pages:\n${JSON.stringify(signals)}\n\nRecent DekhoCampus article titles and slugs to avoid duplicates:\n${JSON.stringify(existingArticles.slice(0, 1500).map((a: any) => ({ title: a.title, slug: a.slug })))}\n\nPick the best ${Math.max(settings.posts_per_run * 2, 4)} article opportunities for Indian students and parents. Prioritise timely admissions, exams, counselling, scholarships, careers and college decisions. Reject anything already covered by DekhoCampus. Do not copy competitors. Return JSON only: {topics:[{title,angle,primary_keyword,geo_focus,reason,category,tags:[...]}]}.`;
     const topicRaw = await generateBlogJson(blogAi, topicPrompt + "\nUse natural plain language, never use an em dash, and return JSON only.");
-    const topics = (parseJson(topicRaw).topics || []).filter((topic: any) => {
+    const topics = ((await parseOrRepairJson(blogAi, topicRaw)).topics || []).filter((topic: any) => {
       const candidateSlug = slugify(topic.title || "");
       return candidateSlug && !existingSlugs.has(candidateSlug) && !existingTitles.has(normalizedTitle(topic.title)) && !isSimilarTitle(topic.title, existingTitleList);
     }).slice(0, settings.posts_per_run);
@@ -247,7 +267,7 @@ Deno.serve(async (req) => {
       await updateRun(admin, runId, { progress: baseProgress, current_step: `Writing article ${topicIndex + 1} of ${topics.length}`, completed_steps: 2 + topicIndex * 3 });
       const articlePrompt = `Create a complete original DekhoCampus article from this approved topic:\n${JSON.stringify(topic)}\n\nResearch context:\n${JSON.stringify(signals)}\n\nTarget length: ${settings.word_limit} words.\n\nReturn JSON only: {title,slug,description,content_html,meta_title,meta_description,meta_keywords,tags,entity_suggestions:[{entity_type,entity_slug,label}],research_notes,cover_kicker}.\n\nRules: optimise for SEO, GEO, AEO and student usefulness. Use plain human wording, short paragraphs, useful headings, FAQs, and small hyphen '-' only. Never copy competitor wording. Avoid fake certainty on dates, fees, cutoffs or rules. Mention official-source verification where needed. Add a final Sources section with source names or official-source guidance.`;
       const articleRaw = await generateBlogJson(blogAi, articlePrompt + "\nFollow current SEO, GEO and AEO guidance. This is AI-assisted editor-reviewed content. Never claim human authorship, undetectability or 0 AI.");
-      const draft = parseJson(articleRaw);
+      const draft = await parseOrRepairJson(blogAi, articleRaw);
       const slug = slugify(draft.slug || draft.title || topic.title);
       if (!slug || existingSlugs.has(slug) || existingTitles.has(normalizedTitle(draft.title || topic.title)) || isSimilarTitle(draft.title || topic.title, existingTitleList)) continue;
       await updateRun(admin, runId, { progress: Math.min(90, baseProgress + 12), current_step: `Generating cover ${topicIndex + 1} of ${topics.length}`, completed_steps: 3 + topicIndex * 3 });
