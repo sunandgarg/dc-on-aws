@@ -54,6 +54,16 @@ async function requireAccess(req: Request, admin: any) {
   const incomingSecret = req.headers.get("x-blog-agent-secret") || "";
   if (configuredSecret && incomingSecret && incomingSecret === configuredSecret) return;
 
+  // Supabase cron uses a per-project token stored in the admin-only settings
+  // row. This keeps scheduled AI generation independent of a browser session.
+  if (incomingSecret) {
+    const { data: scheduler } = await admin.from("blog_auto_agent_settings")
+      .select("scheduler_token")
+      .eq("id", "default")
+      .maybeSingle();
+    if (scheduler?.scheduler_token && incomingSecret === scheduler.scheduler_token) return;
+  }
+
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) throw new Error("Authentication required");
   const { data: userData } = await admin.auth.getUser(token);
