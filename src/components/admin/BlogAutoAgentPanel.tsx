@@ -17,6 +17,8 @@ type Settings = {
   publish_status: "Draft" | "Published";
   model_provider: string;
   word_limit: number;
+  author_mode: "none" | "single" | "round_robin";
+  author_ids: string[];
   last_run_at?: string | null;
   next_run_at?: string | null;
 };
@@ -36,6 +38,7 @@ type Run = {
   selected_topics?: Array<{ title?: string }>;
 };
 type GeneratedArticle = { id: string; title: string; slug: string; featured_image?: string; status?: string; description?: string };
+type Author = { id: string; name: string; designation?: string; photo?: string };
 
 const DRAFT_KEY = "dc:admin:blog-agent:draft:v1";
 
@@ -47,6 +50,8 @@ const DEFAULT_SETTINGS: Settings = {
   publish_status: "Published",
   model_provider: "gemini",
   word_limit: 1200,
+  author_mode: "none",
+  author_ids: [],
 };
 
 const DEFAULT_SOURCES: Source[] = [
@@ -66,20 +71,23 @@ export function BlogAutoAgentPanel({ onArticlesCreated }: { onArticlesCreated?: 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [generatedArticles, setGeneratedArticles] = useState<GeneratedArticle[]>([]);
+  const [authors, setAuthors] = useState<Author[]>([]);
   const [now, setNow] = useState(Date.now());
 
   const load = async (showLoader = false) => {
     if (showLoader) setLoading(true);
     try {
-      const [{ data: settingsData }, { data: sourceData }, { data: runData }] = await Promise.all([
+      const [{ data: settingsData }, { data: sourceData }, { data: runData }, { data: authorData }] = await Promise.all([
         (supabase as any).from("blog_auto_agent_settings")
-          .select("enabled,interval_minutes,posts_per_run,daily_post_cap,publish_status,model_provider,word_limit,last_run_at,next_run_at")
+          .select("enabled,interval_minutes,posts_per_run,daily_post_cap,publish_status,model_provider,word_limit,author_mode,author_ids,last_run_at,next_run_at")
           .eq("id", "default").maybeSingle(),
         (supabase as any).from("blog_research_sources").select("*").order("display_order"),
         (supabase as any).from("blog_auto_agent_runs").select("*").order("started_at", { ascending: false }).limit(5),
+        (supabase as any).from("authors").select("id,name,designation,photo").eq("is_active", true).order("display_order"),
       ]);
       if (settingsData) setSettings({ ...DEFAULT_SETTINGS, ...settingsData });
       if (sourceData?.length) setSources(sourceData);
+      setAuthors(authorData || []);
       if (runData) {
         setRuns(runData);
         const ids = Array.from(new Set(runData.flatMap((run: Run) => run.created_article_ids || [])));
@@ -127,6 +135,18 @@ export function BlogAutoAgentPanel({ onArticlesCreated }: { onArticlesCreated?: 
   const activeSourceCount = useMemo(() => sources.filter(s => s.is_active).length, [sources]);
   const updateSetting = (key: keyof Settings, value: any) => setSettings(prev => ({ ...prev, [key]: value }));
 
+  const edgeErrorMessage = async (error: any) => {
+    try {
+      const response = error?.context as Response | undefined;
+      if (response) {
+        const payload = await response.clone().json().catch(async () => ({ error: await response.clone().text() }));
+        if (payload?.error) return String(payload.error);
+        if (payload?.message) return String(payload.message);
+      }
+    } catch { /* fall through */ }
+    return error?.message || "Blog agent run failed";
+  };
+
   const save = async () => {
     setBusy(true);
     try {
@@ -159,7 +179,9 @@ export function BlogAutoAgentPanel({ onArticlesCreated }: { onArticlesCreated?: 
       await load(false);
       onArticlesCreated?.();
     } catch (error: any) {
-      toast.error(error.message || "Blog agent run failed");
+      const message = await edgeErrorMessage(error);
+      toast.error(message, { duration: 12000 });
+      await load(false);
     } finally {
       setBusy(false);
     }
@@ -225,9 +247,11 @@ export function BlogAutoAgentPanel({ onArticlesCreated }: { onArticlesCreated?: 
         </div>
         <div className="rounded-xl border p-3">
           <Label className="text-xs">Articles per run</Label>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {[1, 2, 3].map(count => <Button key={count} size="sm" variant={settings.posts_per_run === count ? "default" : "outline"} onClick={() => updateSetting("posts_per_run", count)}>{count}</Button>)}
+            <Input aria-label="Custom articles per run" type="number" min={1} max={20} value={settings.posts_per_run} onChange={(event) => updateSetting("posts_per_run", Math.min(20, Math.max(1, Number(event.target.value || 1))))} className="h-9 w-20" />
           </div>
+          <p className="mt-2 text-[10px] text-muted-foreground">Custom: 1-20. Higher counts take longer and use more AI credits.</p>
         </div>
         <div className="rounded-xl border p-3">
           <Label className="text-xs">Publish mode</Label>
@@ -235,6 +259,35 @@ export function BlogAutoAgentPanel({ onArticlesCreated }: { onArticlesCreated?: 
             {(["Published", "Draft"] as const).map(status => <Button key={status} size="sm" variant={settings.publish_status === status ? "default" : "outline"} onClick={() => updateSetting("publish_status", status)}>{status}</Button>)}
           </div>
         </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div><Label>Author assignment</Label><p className="text-xs text-muted-foreground">Choose one byline or rotate articles across selected author profiles.</p></div>
+          <div className="flex flex-wrap gap-2">
+            {([['none', 'Editorial default'], ['single', 'Single author'], ['round_robin', 'Round robin']] as const).map(([mode, label]) => (
+              <Button key={mode} type="button" size="sm" variant={settings.author_mode === mode ? "default" : "outline"} onClick={() => updateSetting("author_mode", mode)}>{label}</Button>
+            ))}
+          </div>
+        </div>
+        {settings.author_mode !== "none" && (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {authors.map((author) => {
+              const selected = settings.author_ids.includes(author.id);
+              return <label key={author.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${selected ? 'border-primary bg-primary/5' : ''}`}>
+                <input
+                  type={settings.author_mode === "single" ? "radio" : "checkbox"}
+                  name="blog-agent-author"
+                  checked={selected}
+                  onChange={() => updateSetting("author_ids", settings.author_mode === "single" ? [author.id] : selected ? settings.author_ids.filter((id) => id !== author.id) : [...settings.author_ids, author.id])}
+                />
+                {author.photo ? <img src={author.photo} alt="" className="h-9 w-9 rounded-full object-cover" /> : <div className="h-9 w-9 rounded-full bg-primary/10" />}
+                <span className="min-w-0"><span className="block truncate text-sm font-medium">{author.name}</span><span className="block truncate text-xs text-muted-foreground">{author.designation || "Author"}</span></span>
+              </label>;
+            })}
+            {!authors.length && <p className="text-sm text-muted-foreground">Add active profiles in Authors / Team first.</p>}
+          </div>
+        )}
       </div>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-3">

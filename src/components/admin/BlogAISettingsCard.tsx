@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 
 type State = { text_model: string; image_model: string; image_quality: "low" | "medium" | "high"; claude_key_set: boolean; openai_key_set: boolean };
-const defaults: State = { text_model: "claude-sonnet-5", image_model: "gpt-image-2", image_quality: "medium", claude_key_set: false, openai_key_set: false };
+const defaults: State = { text_model: "auto-sonnet", image_model: "gpt-image-1", image_quality: "medium", claude_key_set: false, openai_key_set: false };
 
 export function BlogAISettingsCard() {
   const [settings, setSettings] = useState(defaults);

@@ -178,10 +178,19 @@ Deno.serve(async (req) => {
       publish_status: "Published",
       model_provider: "gemini",
       word_limit: 1200,
+      author_mode: "none",
+      author_ids: [],
+      last_author_index: -1,
       ...(settingsRow || {}),
       ...(body.override || {}),
     };
     const blogAi = await loadBlogAiConfig(admin, service);
+    const selectedAuthorIds = Array.isArray(settings.author_ids) ? settings.author_ids.filter(Boolean) : [];
+    const { data: selectedAuthorRows } = selectedAuthorIds.length
+      ? await admin.from("authors").select("id,name").eq("is_active", true).in("id", selectedAuthorIds)
+      : { data: [] };
+    const authorsById = new Map((selectedAuthorRows || []).map((author: any) => [author.id, author]));
+    const selectedAuthors = selectedAuthorIds.map((id: string) => authorsById.get(id)).filter(Boolean) as Array<{ id: string; name: string }>;
 
     if (triggerType === "schedule" && !settings.enabled) return json({ skipped: true, message: "Blog auto agent is disabled" });
     if (triggerType === "schedule" && settings.next_run_at && new Date(settings.next_run_at).getTime() > Date.now()) {
@@ -244,6 +253,10 @@ Deno.serve(async (req) => {
       await updateRun(admin, runId, { progress: Math.min(90, baseProgress + 12), current_step: `Generating cover ${topicIndex + 1} of ${topics.length}`, completed_steps: 3 + topicIndex * 3 });
       const featured_image = await generateAndUploadBlogCover(admin, blogAi, slug, draft.hero_hook || draft.title || topic.title);
       const tags = Array.from(new Set([...(draft.tags || []), "auto-blog-agent"]));
+      const authorIndex = settings.author_mode === "round_robin" && selectedAuthors.length
+        ? (Number(settings.last_author_index ?? -1) + createdIds.length + 1) % selectedAuthors.length
+        : 0;
+      const assignedAuthor = settings.author_mode !== "none" ? selectedAuthors[authorIndex] : undefined;
 
       await updateRun(admin, runId, { progress: Math.min(96, baseProgress + 23), current_step: `Publishing article ${topicIndex + 1} of ${topics.length}`, completed_steps: 4 + topicIndex * 3 });
       const { data: article, error } = await admin.from("articles").insert({
@@ -256,7 +269,8 @@ Deno.serve(async (req) => {
         meta_keywords: draft.meta_keywords || topic.primary_keyword || "",
         tags,
         category: topic.category || "",
-        author: "DekhoCampus Editorial",
+        author: assignedAuthor?.name || "DekhoCampus Editorial",
+        author_id: assignedAuthor?.id || null,
         featured_image,
         status: settings.publish_status,
         is_active: true,
@@ -274,7 +288,10 @@ Deno.serve(async (req) => {
     }
 
     const nextRun = new Date(Date.now() + Number(settings.interval_minutes || 60) * 60 * 1000).toISOString();
-    await admin.from("blog_auto_agent_settings").upsert({ id: "default", last_run_at: new Date().toISOString(), next_run_at: nextRun });
+    const nextAuthorIndex = settings.author_mode === "round_robin" && selectedAuthors.length && createdIds.length
+      ? (Number(settings.last_author_index ?? -1) + createdIds.length) % selectedAuthors.length
+      : Number(settings.last_author_index ?? -1);
+    await admin.from("blog_auto_agent_settings").upsert({ id: "default", last_run_at: new Date().toISOString(), next_run_at: nextRun, last_author_index: nextAuthorIndex });
     if (runId) await admin.from("blog_auto_agent_runs").update({
       status: "completed",
       progress: 100,

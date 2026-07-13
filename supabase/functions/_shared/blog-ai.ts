@@ -8,8 +8,10 @@ export type BlogAiConfig = {
   imageQuality: "low" | "medium" | "high";
 };
 
-const DEFAULT_CLAUDE_TEXT_MODEL = "claude-sonnet-5";
+const DEFAULT_CLAUDE_TEXT_MODEL = "auto-sonnet";
+const DEFAULT_OPENAI_IMAGE_MODEL = "gpt-image-1";
 const LEGACY_CLAUDE_MODEL_IDS = new Set([
+  "claude-sonnet-5",
   "claude-3-5-sonnet-20241022",
   "claude-3-5-sonnet-latest",
   "claude-3-5-sonnet",
@@ -19,6 +21,29 @@ function normalizeClaudeTextModel(value: string | null | undefined) {
   const model = String(value || "").trim();
   if (!model) return DEFAULT_CLAUDE_TEXT_MODEL;
   return LEGACY_CLAUDE_MODEL_IDS.has(model) ? DEFAULT_CLAUDE_TEXT_MODEL : model;
+}
+
+let resolvedClaudeModel = "";
+
+async function resolveClaudeTextModel(config: BlogAiConfig) {
+  if (resolvedClaudeModel) return resolvedClaudeModel;
+  const response = await fetch("https://api.anthropic.com/v1/models?limit=100", {
+    headers: { "x-api-key": config.claudeKey, "anthropic-version": "2023-06-01" },
+  });
+  if (!response.ok) {
+    if (config.textModel !== "auto-sonnet") return config.textModel;
+    throw new Error(`Could not discover an available Claude model (${response.status}): ${(await response.text()).slice(0, 400)}`);
+  }
+  const payload = await response.json();
+  const models = Array.isArray(payload?.data) ? payload.data : [];
+  const requested = models.find((model: any) => model.id === config.textModel);
+  const sonnet = models
+    .filter((model: any) => String(model.id || "").toLowerCase().includes("sonnet"))
+    .sort((a: any, b: any) => String(b.created_at || b.id).localeCompare(String(a.created_at || a.id)))[0];
+  const selected = requested || sonnet || models[0];
+  if (!selected?.id) throw new Error("This Anthropic API key has no Claude models available. Check its workspace access and billing in Anthropic Console.");
+  resolvedClaudeModel = selected.id;
+  return resolvedClaudeModel;
 }
 
 async function cryptoKey(serviceRoleKey: string) {
@@ -54,18 +79,19 @@ export async function loadBlogAiConfig(admin: any, serviceRoleKey: string): Prom
     claudeKey: await decryptBlogSecret(data?.claude_api_key_ciphertext || "", serviceRoleKey),
     openaiKey: await decryptBlogSecret(data?.openai_api_key_ciphertext || "", serviceRoleKey),
     textModel: normalizeClaudeTextModel(data?.text_model),
-    imageModel: data?.image_model || "gpt-image-2",
+    imageModel: ["gpt-image-2", ""].includes(String(data?.image_model || "")) ? DEFAULT_OPENAI_IMAGE_MODEL : data.image_model,
     imageQuality: data?.image_quality || "medium",
   };
 }
 
 export async function generateBlogJson(config: BlogAiConfig, prompt: string) {
   if (!config.claudeKey) throw new Error("Claude blog API key is not configured in Admin - AI Providers");
+  const model = await resolveClaudeTextModel(config);
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": config.claudeKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: config.textModel,
+      model,
       max_tokens: 8192,
       system: "Return valid JSON only. Never use an em dash. Use a normal hyphen when punctuation is needed.",
       messages: [{ role: "user", content: prompt }],
