@@ -87,6 +87,81 @@ npm run import:static -- --content-root "/path/to/.next/server/pages" \
   --apply --mirror-assets --report reports/legacy-static-import-report.json
 ```
 
+### 31-12-2024 CSV database
+
+Use `import:legacy-csv` for the relational CSV export containing `colleges.csv`,
+`course_info.csv`, `exams.csv`, `college_course.csv`, and the supporting public
+content tables. The importer ignores users, accounts, leads, and other private
+tables. It normalizes legacy fields such as `Estd 2010`, resolves duplicate
+slugs, enriches existing rows without replacing curated content, and creates
+deterministic course-fee IDs so reruns are safe.
+
+Run the audit and produce Supabase-compatible manual fallback files:
+
+```sh
+npm run import:legacy-csv -- \
+  --source-dir "/absolute/path/CSV Excel Database" \
+  --export-dir reports/legacy-csv-mapped \
+  --report reports/legacy-csv-import-report.json
+```
+
+For a direct import, explicitly provide the production project ref and its
+matching secret/service-role key. The script refuses a mismatched URL and never
+loads the frontend `.env` for privileged writes. New rows remain Draft unless
+`--publish` is added.
+
+```sh
+export SUPABASE_URL="https://kozdctbbvrnyddlftmvf.supabase.co"
+read -rs "SUPABASE_SERVICE_ROLE_KEY?Paste Supabase secret/service-role key: "
+echo
+export SUPABASE_SERVICE_ROLE_KEY
+
+npm run import:legacy-csv -- \
+  --source-dir "/absolute/path/CSV Excel Database" \
+  --apply --project-ref kozdctbbvrnyddlftmvf \
+  --report reports/legacy-csv-import-report.json
+```
+
+If Dashboard CSV import is required, import the generated files in this order:
+`courses.csv`, `exams.csv`, `colleges.csv`, then `course_fees.csv`.
+
+Use `--skip-existing` for a fast recovery run after a network interruption. It
+inserts only missing slugs and leaves every successful row untouched.
+
+### Legacy image migration to WebP
+
+`migrate:legacy-assets` inventories legacy AWS/CloudFront image references in
+colleges, courses, exams and articles. With `--apply`, it downloads each unique
+image once, normalizes orientation, limits it to 1920×1920, converts it to WebP,
+uploads it to the public `legacy-public-assets` Supabase Storage bucket, verifies
+the uploaded object, and only then replaces the database reference. Failed
+downloads keep their old URL. Content-addressed object names and database-first
+inventory make reruns safe and resumable.
+
+Run inventory first:
+
+```sh
+npm run migrate:legacy-assets -- \
+  --project-ref kozdctbbvrnyddlftmvf \
+  --report reports/legacy-asset-inventory.json
+```
+
+Apply in controlled batches after reviewing the inventory and Supabase File
+Storage allowance:
+
+```sh
+npm run migrate:legacy-assets -- \
+  --project-ref kozdctbbvrnyddlftmvf \
+  --apply --limit 500 --concurrency 6 --quality 82 \
+  --report reports/legacy-asset-migration-report.json
+```
+
+Rerun the same controlled batch command until inventory reaches zero. Use
+`--all` only when deliberately scheduling every remaining object in one run.
+
+The command requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the local
+terminal. The key must never be committed or exposed to browser code.
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID

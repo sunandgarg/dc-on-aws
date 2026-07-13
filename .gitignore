@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 supabase/.temp/
+reports/legacy-csv-mapped/
+reports/legacy-csv-*.json
+reports/legacy-asset-*.json
 
 # Editor directories and files
 .vscode/*
