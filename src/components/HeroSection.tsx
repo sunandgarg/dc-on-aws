@@ -29,9 +29,6 @@ import iconReviews from "@/assets/cat-reviews.png";
 import iconNews from "@/assets/cat-news.png";
 import { HeroCounsellingCard } from "@/components/HeroCounsellingCard";
 
-const rotatingWords = ["College", "Course", "Career", "Exam", "Future"];
-const wordColors = ["text-gradient", "text-gradient-accent", "text-gradient", "text-gradient-accent", "text-gradient"];
-
 const YEAR = new Date().getFullYear();
 const suggestedPrompts = [
   "Best colleges for B.Tech CSE?",
@@ -66,7 +63,6 @@ interface HeroSectionProps {
 
 export function HeroSection({ onOpenChat }: HeroSectionProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [wordIndex, setWordIndex] = useState(0);
   const [isFocused, setIsFocused] = useState(false);
   const [dbResults, setDbResults] = useState<SearchResult[]>([]);
   const navigate = useNavigate();
@@ -109,13 +105,6 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
     return (heroSettings?.is_active && heroSettings.image_urls?.filter(Boolean)) || [];
   }, [heroSettings]);
   const rotationMs = (heroSettings?.rotation_seconds ?? 11) * 1000;
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setWordIndex((prev) => (prev + 1) % rotatingWords.length);
-    }, 2200);
-    return () => clearInterval(interval);
-  }, []);
 
   // 2026 UX: ambient campus carousel - admin-configurable rotation, respects reduced-motion
   useEffect(() => {
@@ -288,7 +277,7 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
 
   return (
     <section
-      className="relative overflow-hidden bg-gradient-to-b from-background via-secondary/30 to-background"
+      className="relative overflow-hidden bg-[linear-gradient(118deg,#fff7f1_0%,#f8fbff_48%,#eef5ff_100%)]"
       aria-label="Hero"
     >
       {/* Background - bold campus image at top, smoothly fading to background where search bar sits */}
@@ -356,67 +345,46 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
           transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
           className="absolute bottom-[-5%] left-[35%] w-[380px] h-[380px] bg-accent/8 rounded-full blur-[140px]"
         />
+        <div className="absolute -right-40 top-24 h-[520px] w-[520px] rounded-full border-[70px] border-primary/[0.035]" />
+        <div className="absolute -left-52 top-28 h-[460px] w-[460px] rounded-full border-[60px] border-accent/[0.04]" />
       </div>
 
       <div className="container relative z-10 px-4 py-8 md:py-14 lg:py-16">
         <div className="max-w-7xl mx-auto">
           <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)] lg:gap-12">
-            <div className="space-y-5 text-left md:space-y-7">
+            <div className="space-y-5 text-left md:space-y-6">
               {/* AI Badge + Built by IIT Delhi Alumni hero statement */}
               <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="flex flex-col items-start justify-start gap-4"
+            className="flex flex-col items-start justify-start gap-3"
           >
             <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/25">
               <img src={dcLogo} alt="DekhoCampus" className="w-4 h-4 object-contain" />
-              <span className="text-[11px] md:text-xs font-semibold tracking-wide uppercase text-accent">
-                AI-Powered Education
+              <span className="text-[11px] md:text-xs font-bold tracking-[0.12em] uppercase text-accent">
+                Built by IIT Delhi Alumni
               </span>
             </span>
 
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25, type: "spring", stiffness: 200, damping: 22 }}
-              className="relative flex max-w-2xl flex-col items-start gap-2 text-left"
-              aria-label="An Initiative by IIT Delhi Alumni - trusted by 1 lakh plus students"
-            >
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight leading-tight text-primary">
-                An Initiative by IIT Delhi Alumni
-              </h2>
-              <p className="text-xs md:text-sm text-muted-foreground font-medium max-w-xl">
-                We went through the same journey - now we've built the system to simplify yours.
-              </p>
-              <span className="mt-1 inline-flex items-center gap-1.5 text-[11px] md:text-xs font-medium text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground" aria-label="Trusted by more than one lakh students">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                 </span>
-                Trusted by 1L+ Students
+                1L+ students already guided
               </span>
-            </motion.div>
           </motion.div>
 
-          {/* Rotating headline */}
+          {/* Primary promise */}
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <h1 className="text-[33px] sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground leading-[1.15] tracking-tight">
-              Discover Your Ideal
-              <br />
-              <AnimatePresence mode="wait">
-                <motion.span
-                  key={rotatingWords[wordIndex]}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className={`inline-block ${wordColors[wordIndex]}`}
-                >
-                  {rotatingWords[wordIndex]}
-                </motion.span>
-              </AnimatePresence>
+            <h1 className="max-w-3xl text-[40px] font-black leading-[1.04] tracking-[-0.045em] text-foreground sm:text-5xl md:text-[58px] lg:text-[64px]">
+              Your future deserves
+              <span className="block bg-gradient-to-r from-primary via-blue-600 to-accent bg-clip-text pb-1 text-transparent">the right choice.</span>
             </h1>
+            <p className="mt-4 max-w-2xl text-sm font-medium leading-6 text-muted-foreground sm:text-base md:text-lg md:leading-7">
+              Compare verified colleges, fees and outcomes - then get a personalised plan from AI and real admission experts.
+            </p>
           </motion.div>
 
           {/* Unified Search Bar with AI icon */}
@@ -528,6 +496,19 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
                 </button>
               ))}
               </div>
+
+            <div className="mt-5 grid max-w-xl grid-cols-3 divide-x divide-border/70 rounded-2xl border border-white/80 bg-white/55 px-2 py-3 shadow-sm backdrop-blur-md">
+              {[
+                ["13K+", "Colleges"],
+                ["840+", "Courses"],
+                ["₹0", "Agent markup"],
+              ].map(([value, label]) => (
+                <div key={label} className="px-2 text-center sm:px-4 sm:text-left">
+                  <strong className="block text-base font-black text-foreground sm:text-xl">{value}</strong>
+                  <span className="text-[10px] font-semibold text-muted-foreground sm:text-xs">{label}</span>
+                </div>
+              ))}
+            </div>
           </motion.div>
 
             </div>
