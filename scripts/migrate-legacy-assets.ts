@@ -55,6 +55,7 @@ const maxWidth = Math.max(320, Math.min(4000, Number(option("--max-width", "1920
 const maxHeight = Math.max(320, Math.min(4000, Number(option("--max-height", "1920")) || 1920));
 const maxInputBytes = Math.max(1_000_000, Number(option("--max-input-bytes", "26214400")) || 26_214_400);
 const requestedLimit = Math.max(0, Number(option("--limit", "0")) || 0);
+const checkpointSize = Math.max(50, Math.min(5000, Number(option("--checkpoint-size", "1000")) || 1000));
 const migrateAll = has("--all");
 const allowedHosts = new Set([...DEFAULT_HOSTS, ...options("--allow-host").map((host) => host.toLowerCase())]);
 
@@ -69,7 +70,7 @@ if (destinationRef !== projectRef) throw new Error(`Destination mismatch: URL po
 const client = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 const report = {
   generated_at: new Date().toISOString(), mode: apply ? "apply" : "inventory", project_ref: projectRef, bucket,
-  settings: { concurrency, update_concurrency: updateConcurrency, quality, max_width: maxWidth, max_height: maxHeight, max_input_bytes: maxInputBytes, allowed_hosts: [...allowedHosts] },
+  settings: { concurrency, update_concurrency: updateConcurrency, checkpoint_size: checkpointSize, quality, max_width: maxWidth, max_height: maxHeight, max_input_bytes: maxInputBytes, allowed_hosts: [...allowedHosts] },
   scanned_rows: {} as Record<string, number>, unique_assets: 0, scheduled_assets: 0, references: 0, mirrored: 0, failed: 0,
   source_bytes: 0, webp_bytes: 0, rows_updated: 0, update_failures: [] as Array<{ table: string; slug: string; message: string }>,
   assets: [] as AssetResult[],
@@ -117,6 +118,11 @@ async function loadSharp() {
   } catch {
     throw new Error("WebP conversion requires Sharp. Run `npm install --save-dev sharp` once, then rerun this command.");
   }
+}
+
+async function saveReport() {
+  await mkdir(resolve(reportPath, ".."), { recursive: true });
+  await writeFile(reportPath, JSON.stringify(report, null, 2));
 }
 
 async function mirrorAsset(source: string, sharp: Awaited<ReturnType<typeof loadSharp>>, index: number, total: number): Promise<AssetResult> {
@@ -176,37 +182,50 @@ async function main() {
     const scheduled = migrateAll ? sources : sources.slice(0, requestedLimit);
     report.scheduled_assets = scheduled.length;
     const sharp = await loadSharp();
-    report.assets = await mapLimit(scheduled, concurrency, (source, index) => mirrorAsset(source, sharp, index, scheduled.length));
-    const replacements = new Map(report.assets.filter((asset) => asset.status === "mirrored" && asset.destination).map((asset) => [asset.source, asset.destination!]));
-    report.mirrored = replacements.size;
-    report.failed = report.assets.length - report.mirrored;
-    report.source_bytes = report.assets.reduce((sum, asset) => sum + (asset.source_bytes ?? 0), 0);
-    report.webp_bytes = report.assets.reduce((sum, asset) => sum + (asset.webp_bytes ?? 0), 0);
+    const replacements = new Map<string, string>();
 
-    const patches = new Map<string, { table: string; id: string; slug: string; values: Json }>();
-    for (const [source, refs] of referencesByUrl) {
-      const destination = replacements.get(source);
-      if (!destination) continue;
-      for (const ref of refs) {
-        const key = `${ref.table}:${ref.id}`;
-        const patch = patches.get(key) ?? { table: ref.table, id: ref.id, slug: ref.slug, values: {} };
-        if (ref.array) {
-          const current = (patch.values[ref.field] ?? ref.original) as string[];
-          patch.values[ref.field] = current.map((value) => replacements.get(value) ?? value);
-        } else patch.values[ref.field] = destination;
-        patches.set(key, patch);
+    for (let offset = 0; offset < scheduled.length; offset += checkpointSize) {
+      const chunk = scheduled.slice(offset, offset + checkpointSize);
+      const results = await mapLimit(chunk, concurrency, (source, index) => mirrorAsset(source, sharp, offset + index, scheduled.length));
+      report.assets.push(...results);
+
+      for (const asset of results) {
+        report.source_bytes += asset.source_bytes ?? 0;
+        report.webp_bytes += asset.webp_bytes ?? 0;
+        if (asset.status === "mirrored" && asset.destination) {
+          replacements.set(asset.source, asset.destination);
+          report.mirrored += 1;
+        } else report.failed += 1;
       }
-    }
 
-    await mapLimit([...patches.values()], updateConcurrency, async (patch) => {
-      const { error } = await client.from(patch.table).update(patch.values).eq("id", patch.id);
-      if (error) report.update_failures.push({ table: patch.table, slug: patch.slug, message: error.message });
-      else report.rows_updated += 1;
-    });
+      const chunkSources = new Set(results.filter((asset) => asset.status === "mirrored").map((asset) => asset.source));
+      const patches = new Map<string, { table: string; id: string; slug: string; values: Json }>();
+      for (const source of chunkSources) {
+        const destination = replacements.get(source);
+        if (!destination) continue;
+        for (const ref of referencesByUrl.get(source) ?? []) {
+          const key = `${ref.table}:${ref.id}`;
+          const patch = patches.get(key) ?? { table: ref.table, id: ref.id, slug: ref.slug, values: {} };
+          if (ref.array) {
+            const current = (patch.values[ref.field] ?? ref.original) as string[];
+            patch.values[ref.field] = current.map((value) => replacements.get(value) ?? value);
+          } else patch.values[ref.field] = destination;
+          patches.set(key, patch);
+        }
+      }
+
+      await mapLimit([...patches.values()], updateConcurrency, async (patch) => {
+        const { error } = await client.from(patch.table).update(patch.values).eq("id", patch.id);
+        if (error) report.update_failures.push({ table: patch.table, slug: patch.slug, message: error.message });
+        else report.rows_updated += 1;
+      });
+
+      await saveReport();
+      console.log(`[assets] checkpoint ${Math.min(offset + chunk.length, scheduled.length)}/${scheduled.length} mirrored=${report.mirrored} failed=${report.failed} rows_updated=${report.rows_updated}`);
+    }
   }
 
-  await mkdir(resolve(reportPath, ".."), { recursive: true });
-  await writeFile(reportPath, JSON.stringify(report, null, 2));
+  await saveReport();
   console.log(`[assets] report=${reportPath}`);
   console.log(JSON.stringify({ mode: report.mode, scanned_rows: report.scanned_rows, unique_assets: report.unique_assets, scheduled_assets: report.scheduled_assets, references: report.references, mirrored: report.mirrored, failed: report.failed, rows_updated: report.rows_updated, source_bytes: report.source_bytes, webp_bytes: report.webp_bytes }, null, 2));
 }
