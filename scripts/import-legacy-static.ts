@@ -21,7 +21,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 type Entity = "colleges" | "courses" | "exams" | "articles";
 type Json = Record<string, unknown>;
 type Candidate = { entity: Entity; slug: string; payload: Json; source: string; richness: number };
-type EntityReport = { discovered: number; invalid: number; duplicate_in_source: string[]; existing_in_supabase: string[]; eligible: number; inserted: number; failed: Array<{ slug: string; message: string }> };
+type EntityReport = { discovered: number; invalid: number; duplicate_in_source: string[]; existing_in_supabase: string[]; eligible: number; inserted: number; updated: number; failed: Array<{ slug: string; message: string }> };
 type Report = { generated_at: string; mode: "dry-run" | "apply"; publish: boolean; sources: string[]; entities: Record<Entity, EntityReport>; asset_mirror: { requested: boolean; discovered: number; mirrored: number; failed: Array<{ url: string; message: string }> } };
 
 const args = process.argv.slice(2);
@@ -170,7 +170,7 @@ const record = (value: unknown): Json => value && typeof value === "object" && !
 const nested = (row: Json, key: string) => record(row[key]);
 const allowedAssetHost = new Set(["d3pbz6yh6cuepy.cloudfront.net", "devdc.s3.eu-north-1.amazonaws.com", "dekhocampus.s3.ap-south-1.amazonaws.com"]);
 
-function reportEntity(): EntityReport { return { discovered: 0, invalid: 0, duplicate_in_source: [], existing_in_supabase: [], eligible: 0, inserted: 0, failed: [] }; }
+function reportEntity(): EntityReport { return { discovered: 0, invalid: 0, duplicate_in_source: [], existing_in_supabase: [], eligible: 0, inserted: 0, updated: 0, failed: [] }; }
 const report: Report = { generated_at: new Date().toISOString(), mode: apply ? "apply" : "dry-run", publish, sources: [], entities: { colleges: reportEntity(), courses: reportEntity(), exams: reportEntity(), articles: reportEntity() }, asset_mirror: { requested: mirrorAssets, discovered: 0, mirrored: 0, failed: [] } };
 
 async function files(dir: string): Promise<string[]> {
@@ -429,16 +429,30 @@ async function mirror(client: SupabaseClient, candidates: Candidate[]) {
 }
 
 async function insert(client: SupabaseClient, entity: Entity, candidates: Candidate[], known: Set<string>) {
-  const stats = report.entities[entity]; const ready = candidates.filter((candidate) => {
-    if (known.has(candidate.slug)) { stats.existing_in_supabase.push(candidate.slug); return false; }
-    return true;
-  });
-  stats.eligible = ready.length;
-  console.log(`[import:static] inserting ${entity}: ${ready.length} eligible, ${stats.existing_in_supabase.length} already in Supabase`);
-  for (let i = 0; i < ready.length; i += 100) {
-    const batch = ready.slice(i, i + 100); const { error } = await client.from(entity).insert(batch.map((candidate) => candidate.payload));
+  const stats = report.entities[entity];
+  const fresh = candidates.filter((candidate) => !known.has(candidate.slug));
+  const existing = candidates.filter((candidate) => known.has(candidate.slug));
+  stats.eligible = candidates.length;
+  console.log(`[import:static] syncing ${entity}: ${fresh.length} new, ${existing.length} existing`);
+
+  for (let i = 0; i < fresh.length; i += 100) {
+    const batch = fresh.slice(i, i + 100);
+    const { error } = await client.from(entity).insert(batch.map((candidate) => candidate.payload));
     if (!error) { stats.inserted += batch.length; continue; }
-    for (const candidate of batch) { const result = await client.from(entity).insert(candidate.payload); if (result.error) stats.failed.push({ slug: candidate.slug, message: result.error.message }); else stats.inserted += 1; }
+    for (const candidate of batch) {
+      const result = await client.from(entity).insert(candidate.payload);
+      if (result.error) stats.failed.push({ slug: candidate.slug, message: result.error.message });
+      else stats.inserted += 1;
+    }
+  }
+
+  for (const candidate of existing) {
+    const payload = { ...candidate.payload };
+    delete payload.id;
+    delete payload.created_at;
+    const result = await client.from(entity).update(payload).eq("slug", candidate.slug);
+    if (result.error) stats.failed.push({ slug: candidate.slug, message: result.error.message });
+    else stats.updated += 1;
   }
 }
 
@@ -461,7 +475,7 @@ async function main() {
   for (const entity of ["colleges", "courses", "exams", "articles"] as Entity[]) {
     console.log(`[import:static] checking existing slugs for ${entity}`);
     const current = client ? await existingSlugs(client, entity) : new Set<string>(); const candidates = [...all.get(entity)!.values()];
-    for (const candidate of candidates) if (current.has(candidate.slug)) report.entities[entity].existing_in_supabase.push(candidate.slug); else report.entities[entity].eligible += 1;
+    for (const candidate of candidates) if (current.has(candidate.slug)) report.entities[entity].existing_in_supabase.push(candidate.slug);
   }
   if (apply && mirrorAssets) await mirror(client!, flat);
   if (apply) for (const entity of ["colleges", "courses", "exams", "articles"] as Entity[]) await insert(client!, entity, [...all.get(entity)!.values()], await existingSlugs(client!, entity));
