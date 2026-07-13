@@ -45,9 +45,15 @@ try {
 } catch { /* .env is optional in CI */ }
 if (apply && !process.env.SUPABASE_SERVICE_ROLE_KEY) throw new Error("--apply requires SUPABASE_SERVICE_ROLE_KEY. A publishable key cannot import content.");
 
-const projectUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+// Imports are privileged writes.  Never fall back to the front-end project's
+// VITE_SUPABASE_URL here: a local .env may point at a Lovable/dev project while
+// the service key belongs to production.  Requiring an explicit URL prevents
+// an opaque and misleading "Invalid API key" response from Supabase.
+const projectUrl = apply ? process.env.SUPABASE_URL : (process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL);
 const publicKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (apply && !projectUrl) throw new Error("--apply requires SUPABASE_URL. Export the exact destination project URL first, for example: export SUPABASE_URL=https://<project-ref>.supabase.co");
+if (apply && /^sb_publishable_/i.test(serviceKey ?? "")) throw new Error("SUPABASE_SERVICE_ROLE_KEY contains a publishable key. Open Supabase Dashboard -> Project Settings -> API Keys and copy the secret key (sb_secret_...) or the legacy service_role key, then rerun.");
 if (!offline && (!projectUrl || !(serviceKey ?? publicKey))) throw new Error("Set SUPABASE_URL and either SUPABASE_SERVICE_ROLE_KEY (--apply) or VITE_SUPABASE_PUBLISHABLE_KEY (dry run).");
 if (offline && apply) throw new Error("--offline is only valid for a dry run.");
 
