@@ -62,6 +62,56 @@ export type DbCollege = {
   is_partner?: boolean | null;
 };
 
+const COLLEGE_PAGE_SIZE = 1000;
+
+async function fetchActiveColleges(): Promise<DbCollege[]> {
+  const colleges: DbCollege[] = [];
+
+  for (let from = 0; ; from += COLLEGE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("colleges")
+      .select("*")
+      .eq("is_active", true)
+      .order("priority", { ascending: true, nullsFirst: false })
+      .order("featured_rank", { ascending: true, nullsFirst: false })
+      .order("priority_updated_at", { ascending: false })
+      .order("rating", { ascending: false })
+      .order("name", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + COLLEGE_PAGE_SIZE - 1);
+
+    if (error) throw error;
+    const page = (data ?? []) as DbCollege[];
+    colleges.push(...page);
+    if (page.length < COLLEGE_PAGE_SIZE) break;
+  }
+
+  return colleges;
+}
+
+async function fetchAllColleges(): Promise<DbCollege[]> {
+  const colleges: DbCollege[] = [];
+
+  for (let from = 0; ; from += COLLEGE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("colleges")
+      .select("*")
+      .order("priority", { ascending: true, nullsFirst: false })
+      .order("featured_rank", { ascending: true, nullsFirst: false })
+      .order("priority_updated_at", { ascending: false })
+      .order("name", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + COLLEGE_PAGE_SIZE - 1);
+
+    if (error) throw error;
+    const page = (data ?? []) as DbCollege[];
+    colleges.push(...page);
+    if (page.length < COLLEGE_PAGE_SIZE) break;
+  }
+
+  return colleges;
+}
+
 export function useDbColleges() {
   return useQuery({
     queryKey: ["db-colleges"],
@@ -71,16 +121,7 @@ export function useDbColleges() {
       //   2. featured_rank asc (1–4 slots) - secondary tiebreaker
       //   3. most-recently re-pinned wins ties
       //   4. rating desc
-      const { data, error } = await supabase
-        .from("colleges")
-        .select("*")
-        .eq("is_active", true)
-        .order("priority", { ascending: true, nullsFirst: false })
-        .order("featured_rank", { ascending: true, nullsFirst: false })
-        .order("priority_updated_at", { ascending: false })
-        .order("rating", { ascending: false });
-      if (error) throw error;
-      return data as DbCollege[];
+      return fetchActiveColleges();
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -89,17 +130,7 @@ export function useDbColleges() {
 export function useAllDbColleges() {
   return useQuery({
     queryKey: ["db-colleges-all"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("colleges")
-        .select("*")
-        .order("priority", { ascending: true, nullsFirst: false })
-        .order("featured_rank", { ascending: true, nullsFirst: false })
-        .order("priority_updated_at", { ascending: false })
-        .order("name");
-      if (error) throw error;
-      return data as DbCollege[];
-    },
+    queryFn: fetchAllColleges,
     staleTime: 2 * 60 * 1000,
   });
 }
