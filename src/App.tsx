@@ -7,7 +7,7 @@ import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persist
 import { hydrateBootstrap } from "@/lib/bootstrap";
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { CompareProvider } from "@/contexts/CompareContext";
@@ -21,6 +21,7 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import { ScrollLockGuard } from "@/components/ScrollLockGuard";
 import { lazyRetry } from "@/lib/lazyRetry";
 import { ChunkErrorBoundary } from "@/components/ChunkErrorBoundary";
+import { DeploymentUpdateCoordinator } from "@/components/DeploymentUpdateCoordinator";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { NewsCallButton } from "@/components/NewsCallButton";
 import { useLocation } from "react-router-dom";
@@ -71,8 +72,8 @@ const AdminHeroSettings = lazyRetry(() => import("./pages/AdminHeroSettings"), "
 const AdminHeroCategories = lazyRetry(() => import("./pages/AdminHeroCategories"), "AdminHeroCategories");
 const AdminPopupAnalytics = lazyRetry(() => import("./pages/AdminPopupAnalytics"), "AdminPopupAnalytics");
 const AdminCtaConversions = lazyRetry(() => import("./pages/AdminCtaConversions"), "AdminCtaConversions");
-const ToolPage = lazy(() => import("./pages/ToolPage"));
-const AllTools = lazy(() => import("./pages/AllTools"));
+const ToolPage = lazyRetry(() => import("./pages/ToolPage"), "ToolPage");
+const AllTools = lazyRetry(() => import("./pages/AllTools"), "AllTools");
 const AdminPartners = lazyRetry(() => import("./pages/AdminPartners"), "AdminPartners");
 const AdminAIProviders = lazyRetry(() => import("./pages/AdminAIProviders"), "AdminAIProviders");
 const AdminReferrals = lazyRetry(() => import("./pages/AdminReferrals"), "AdminReferrals");
@@ -85,11 +86,11 @@ const AdminLeadPush = lazyRetry(() => import("./pages/AdminLeadPush"), "AdminLea
 const AdminLeadPushHub = lazyRetry(() => import("./pages/AdminLeadPushHub"), "AdminLeadPushHub");
 const AdminLeadPushV2 = lazyRetry(() => import("./pages/AdminLeadPushV2"), "AdminLeadPushV2");
 const AdminMarketingAutomation = lazyRetry(() => import("./pages/AdminMarketingAutomation"), "AdminMarketingAutomation");
-const News = lazy(() => import("./pages/News"));
-const UserDashboard = lazy(() => import("./pages/UserDashboard"));
-const LegalPage = lazy(() => import("./pages/LegalPage"));
-const AllCareers = lazy(() => import("./pages/AllCareers"));
-const CareerDetail = lazy(() => import("./pages/CareerDetail"));
+const News = lazyRetry(() => import("./pages/News"), "News");
+const UserDashboard = lazyRetry(() => import("./pages/UserDashboard"), "UserDashboard");
+const LegalPage = lazyRetry(() => import("./pages/LegalPage"), "LegalPage");
+const AllCareers = lazyRetry(() => import("./pages/AllCareers"), "AllCareers");
+const CareerDetail = lazyRetry(() => import("./pages/CareerDetail"), "CareerDetail");
 const AdminLegalPages = lazyRetry(() => import("./pages/AdminLegalPages"), "AdminLegalPages");
 const AdminSitemap = lazyRetry(() => import("./pages/AdminSitemap"), "AdminSitemap");
 const AdminIntegrations = lazyRetry(() => import("./pages/AdminIntegrations"), "AdminIntegrations");
@@ -98,8 +99,8 @@ import { SiteIntegrations } from "@/components/SiteIntegrations";
 import { AdsenseLoader } from "@/components/ads/AdsenseLoader";
 const AdminCareers = lazyRetry(() => import("./pages/AdminCareers"), "AdminCareers");
 const AdminJobs = lazyRetry(() => import("./pages/AdminJobs"), "AdminJobs");
-const AllJobs = lazy(() => import("./pages/AllJobs"));
-const JobDetail = lazy(() => import("./pages/JobDetail"));
+const AllJobs = lazyRetry(() => import("./pages/AllJobs"), "AllJobs");
+const JobDetail = lazyRetry(() => import("./pages/JobDetail"), "JobDetail");
 const AdminApplications = lazyRetry(() => import("./pages/AdminApplications"), "AdminApplications");
 const AdminJobApplications = lazyRetry(() => import("./pages/AdminJobApplications"), "AdminJobApplications");
 const AdminUsers = lazyRetry(() => import("./pages/AdminUsers"), "AdminUsers");
@@ -115,42 +116,42 @@ const PremiumProgramDetail = lazyRetry(() => import("./pages/PremiumProgramDetai
 const AllPremiumPrograms = lazyRetry(() => import("./pages/AllPremiumPrograms"), "AllPremiumPrograms");
 const AdminPriority = lazyRetry(() => import("./pages/AdminPriority"), "AdminPriority");
 const AdminBulk = lazyRetry(() => import("./pages/AdminBulk"), "AdminBulk");
-const StudyMaterial = lazy(() => import("./pages/StudyMaterial"));
-const Resources = lazy(() => import("./pages/Resources"));
-const StudyClass = lazy(() => import("./pages/StudyClass"));
-const StudySubject = lazy(() => import("./pages/StudySubject"));
+const StudyMaterial = lazyRetry(() => import("./pages/StudyMaterial"), "StudyMaterial");
+const Resources = lazyRetry(() => import("./pages/Resources"), "Resources");
+const StudyClass = lazyRetry(() => import("./pages/StudyClass"), "StudyClass");
+const StudySubject = lazyRetry(() => import("./pages/StudySubject"), "StudySubject");
 const AdminStudyMaterial = lazyRetry(() => import("./pages/AdminStudyMaterial"), "AdminStudyMaterial");
 const AdminCollegeStudy = lazyRetry(() => import("./pages/AdminCollegeStudy"), "AdminCollegeStudy");
-const CollegeStudyMaterial = lazy(() => import("./pages/CollegeStudyMaterial"));
-const CollegeProgram = lazy(() => import("./pages/CollegeProgram"));
-const CollegeUniversity = lazy(() => import("./pages/CollegeUniversity"));
-const CollegeSubject = lazy(() => import("./pages/CollegeSubject"));
+const CollegeStudyMaterial = lazyRetry(() => import("./pages/CollegeStudyMaterial"), "CollegeStudyMaterial");
+const CollegeProgram = lazyRetry(() => import("./pages/CollegeProgram"), "CollegeProgram");
+const CollegeUniversity = lazyRetry(() => import("./pages/CollegeUniversity"), "CollegeUniversity");
+const CollegeSubject = lazyRetry(() => import("./pages/CollegeSubject"), "CollegeSubject");
 const AdminToppers = lazyRetry(() => import("./pages/AdminToppers"), "AdminToppers");
 const AdminTagsManager = lazyRetry(() => import("./pages/AdminTagsManager"), "AdminTagsManager");
 const AdminBoardLinks = lazyRetry(() => import("./pages/AdminBoardLinks"), "AdminBoardLinks");
-const LandingPage = lazy(() => import("./pages/LandingPage"));
+const LandingPage = lazyRetry(() => import("./pages/LandingPage"), "LandingPage");
 const AdminLandingPages = lazyRetry(() => import("./pages/AdminLandingPages"), "AdminLandingPages");
 const AdminReviews = lazyRetry(() => import("./pages/AdminReviews"), "AdminReviews");
 const AdminAIReports = lazyRetry(() => import("./pages/AdminAIReports"), "AdminAIReports");
 const AdminApprovalBodies = lazyRetry(() => import("./pages/AdminApprovalBodies"), "AdminApprovalBodies");
 const AdminCategories = lazyRetry(() => import("./pages/AdminCategories"), "AdminCategories");
 const AdminArticleCategories = lazyRetry(() => import("./pages/AdminArticleCategories"), "AdminArticleCategories");
-const Scholarships = lazy(() => import("./pages/Scholarships"));
-const ScholarshipDetail = lazy(() => import("./pages/ScholarshipDetail"));
+const Scholarships = lazyRetry(() => import("./pages/Scholarships"), "Scholarships");
+const ScholarshipDetail = lazyRetry(() => import("./pages/ScholarshipDetail"), "ScholarshipDetail");
 const AdminScholarships = lazyRetry(() => import("./pages/AdminScholarships"), "AdminScholarships");
-const Onboarding = lazy(() => import("./pages/Onboarding"));
-const AboutUs = lazy(() => import("./pages/AboutUs"));
+const Onboarding = lazyRetry(() => import("./pages/Onboarding"), "Onboarding");
+const AboutUs = lazyRetry(() => import("./pages/AboutUs"), "AboutUs");
 const AdminAbout = lazyRetry(() => import("./pages/AdminAbout"), "AdminAbout");
 const AdminAuthors = lazyRetry(() => import("./pages/AdminAuthors"), "AdminAuthors");
-const AuthorPage = lazy(() => import("./pages/AuthorPage"));
+const AuthorPage = lazyRetry(() => import("./pages/AuthorPage"), "AuthorPage");
 const AdminUserAnalytics = lazyRetry(() => import("./pages/AdminUserAnalytics"), "AdminUserAnalytics");
 const AdminFunnel = lazyRetry(() => import("./pages/AdminFunnel"), "AdminFunnel");
 const AdminHeatmap = lazyRetry(() => import("./pages/AdminHeatmap"), "AdminHeatmap");
-const ExamCalendar = lazy(() => import("./pages/ExamCalendar"));
-const EligibilityChecker = lazy(() => import("./pages/EligibilityChecker"));
-const CollegePredictor = lazy(() => import("./pages/CollegePredictor"));
-const LockTarget = lazy(() => import("./pages/LockTarget"));
-const TargetDashboard = lazy(() => import("./pages/TargetDashboard"));
+const ExamCalendar = lazyRetry(() => import("./pages/ExamCalendar"), "ExamCalendar");
+const EligibilityChecker = lazyRetry(() => import("./pages/EligibilityChecker"), "EligibilityChecker");
+const CollegePredictor = lazyRetry(() => import("./pages/CollegePredictor"), "CollegePredictor");
+const LockTarget = lazyRetry(() => import("./pages/LockTarget"), "LockTarget");
+const TargetDashboard = lazyRetry(() => import("./pages/TargetDashboard"), "TargetDashboard");
 const CatUniverse = lazyRetry(() => import("./pages/CatUniverse"), "CatUniverse");
 const CatUniverseModulePage = lazyRetry(() => import("./pages/CatUniverseModulePage"), "CatUniverseModulePage");
 const AdminCatUniverse = lazyRetry(() => import("./pages/AdminCatUniverse"), "AdminCatUniverse");
@@ -251,6 +252,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <DeploymentUpdateCoordinator />
             <ScrollToTop />
             <ScrollLockGuard />
             <UserTrackingProvider>

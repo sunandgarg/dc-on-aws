@@ -1,0 +1,11 @@
+# Never cache the SPA shell or deployment marker. An existing tab can keep
+# running, while its next full navigation always receives the latest manifest.
+/*
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# Content-hashed assets are safe to cache forever and remain inexpensive.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/version.json
+  Cache-Control: no-cache, no-store, must-revalidate

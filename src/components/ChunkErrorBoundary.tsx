@@ -36,25 +36,6 @@ export class ChunkErrorBoundary extends Component<{ children: ReactNode }, State
     } catch {/* noop */}
   }
 
-  componentDidMount() {
-    if (typeof window !== "undefined") {
-      window.addEventListener("lovable:chunk-error", this.onChunkErrorEvent as EventListener);
-    }
-  }
-
-  componentWillUnmount() {
-    if (typeof window !== "undefined") {
-      window.removeEventListener("lovable:chunk-error", this.onChunkErrorEvent as EventListener);
-    }
-  }
-
-  private onChunkErrorEvent = (e: CustomEvent) => {
-    // Surface lazyRetry failures even if no React error was thrown (e.g. preload).
-    if (!this.state.hasError) {
-      this.setState({ hasError: true, isChunkError: true, message: (e.detail as any)?.message, retrying: false });
-    }
-  };
-
   private handleRetry = async () => {
     this.setState({ retrying: true });
     await recoverFromChunkFailure();
@@ -71,11 +52,11 @@ export class ChunkErrorBoundary extends Component<{ children: ReactNode }, State
             <AlertTriangle className="w-6 h-6 text-orange-600" />
           </div>
           <h2 className="text-lg font-bold text-foreground mb-2">
-            {isChunk ? "We've updated the app" : "Something went wrong"}
+            {isChunk ? "This page could not be loaded" : "Something went wrong"}
           </h2>
           <p className="text-sm text-muted-foreground mb-5">
             {isChunk
-              ? "A new version is available and the page couldn't load some files. Reload to get the latest version."
+              ? "Please retry this page. Your signed-in session and saved work are preserved."
               : "An unexpected error occurred. Please try reloading the page."}
           </p>
           <Button onClick={this.handleRetry} disabled={this.state.retrying} className="gap-2 w-full sm:w-auto">

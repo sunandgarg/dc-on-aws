@@ -3,29 +3,27 @@ import { trackEvent } from "@/lib/analytics";
 
 /**
  * lazyRetry - wraps React.lazy with auto-retry, structured logging, and a
- * one-time cache-busting reload to recover from stale chunk errors that occur
+ * one-time clean reload to recover from stale chunk errors that occur
  * after a deploy (e.g. "Failed to fetch dynamically imported module").
  *
  * Behaviour:
  *  - On chunk failure: retries the import once after a short delay.
- *  - If still failing: clears caches + service workers, then hard-reloads
- *    with a cache-busting query string (throttled to once per 10s per chunk).
- *  - Emits a `lovable:chunk-error` CustomEvent and a `chunk_load_error`
- *    analytics event with `{ chunk, attempt, throttledMs, url, message }`
- *    so an upstream ErrorBoundary can react and product analytics can
- *    measure the failure rate per build.
+ *  - If still failing: clears browser caches, then silently hard-reloads the
+ *    current URL (throttled to once per 30s per chunk).
+ *  - Emits a `chunk_load_error` analytics event with
+ *    `{ chunk, attempt, throttledMs, url, message }` so product analytics can
+ *    measure the failure rate per build without interrupting the user.
  *  - Final failures re-throw so the nearest ErrorBoundary can render UI.
  */
 
-const RELOAD_THROTTLE_MS = 10_000;
+const RELOAD_THROTTLE_MS = 30_000;
 const RETRY_DELAY_MS = 400;
-const RECOVERY_PARAM = "_r";
 
 function cleanupRecoveryUrl() {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
-  if (!url.searchParams.has(RECOVERY_PARAM)) return;
-  url.searchParams.delete(RECOVERY_PARAM);
+  if (!url.searchParams.has("_r")) return;
+  url.searchParams.delete("_r");
   window.history.replaceState(window.history.state, "", url.toString());
 }
 
@@ -50,12 +48,6 @@ async function clearBrowserCaches() {
       await Promise.all(keys.map((k) => caches.delete(k)));
     }
   } catch {/* noop */}
-  try {
-    if ("serviceWorker" in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map((r) => r.unregister()));
-    }
-  } catch {/* noop */}
 }
 
 function logChunkFailure(name: string, attempt: number, err: unknown, throttledMs: number) {
@@ -72,11 +64,6 @@ function logChunkFailure(name: string, attempt: number, err: unknown, throttledM
   console.error("[lazyRetry] chunk failure", detail);
   try {
     trackEvent("chunk_load_error", detail);
-  } catch {/* noop */}
-  try {
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("lovable:chunk-error", { detail }));
-    }
   } catch {/* noop */}
 }
 
@@ -126,6 +113,8 @@ export async function recoverFromChunkFailure() {
   if (typeof window === "undefined") return;
   await clearBrowserCaches();
   const url = new URL(window.location.href);
-  url.searchParams.set(RECOVERY_PARAM, Date.now().toString(36));
   window.location.replace(url.toString());
+  // Keep the rejected lazy import inside Suspense while navigation takes over,
+  // instead of flashing an error boundary during the reload.
+  await new Promise<never>(() => undefined);
 }
