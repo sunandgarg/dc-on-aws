@@ -111,6 +111,40 @@ async function uploadCover(admin: any, slug: string, svg: string) {
   return admin.storage.from("admin-uploads").getPublicUrl(path).data.publicUrl;
 }
 
+async function updateRun(admin: any, runId: string, values: Record<string, unknown>) {
+  if (runId) await admin.from("blog_auto_agent_runs").update(values).eq("id", runId);
+}
+
+async function loadExistingArticles(admin: any) {
+  const rows: any[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await admin.from("articles")
+      .select("id,title,slug,description,created_at")
+      .order("created_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
+}
+
+function normalizedTitle(value: string) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function isSimilarTitle(candidate: string, existingTitles: string[]) {
+  const words = new Set(normalizedTitle(candidate).split(" ").filter((word) => word.length > 2));
+  if (!words.size) return true;
+  return existingTitles.some((title) => {
+    const other = new Set(title.split(" ").filter((word) => word.length > 2));
+    const intersection = [...words].filter((word) => other.has(word)).length;
+    const union = new Set([...words, ...other]).size;
+    return union > 0 && intersection / union >= 0.72;
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -157,28 +191,52 @@ Deno.serve(async (req) => {
       interval_minutes: settings.interval_minutes,
       model_provider: settings.model_provider,
       word_limit: settings.word_limit,
+      progress: 3,
+      current_step: "Preparing research sources",
+      estimated_seconds: Math.max(90, Number(settings.posts_per_run || 1) * 105),
+      total_steps: 2 + Number(settings.posts_per_run || 1) * 3,
     }).select("id").single();
     runId = run?.id || "";
 
     const { data: sourceRows } = await admin.from("blog_research_sources").select("*").eq("is_active", true).order("display_order");
     const sources = (sourceRows?.length ? sourceRows : DEFAULT_SOURCES);
+    await updateRun(admin, runId, { progress: 8, current_step: `Researching ${sources.length} sources`, completed_steps: 0 });
     const signals = await fetchSignals(sources);
-    const { data: existingArticles } = await admin.from("articles").select("title,slug,description,tags,created_at").order("created_at", { ascending: false }).limit(80);
+    await updateRun(admin, runId, { progress: 20, current_step: "Checking every existing DekhoCampus article", completed_steps: 1 });
+    const existingArticles = await loadExistingArticles(admin);
+    const existingSlugs = new Set(existingArticles.map((article: any) => article.slug));
+    const existingTitleList = existingArticles.map((article: any) => normalizedTitle(article.title));
+    const existingTitles = new Set(existingTitleList);
 
-    const topicPrompt = `You are the DekhoCampus education-news editor. Today is ${new Date().toISOString().slice(0, 10)} in India.\n\nResearch signals from competitor and own website pages:\n${JSON.stringify(signals)}\n\nRecent DekhoCampus articles to avoid duplicates:\n${JSON.stringify(existingArticles || [])}\n\nPick the best ${settings.posts_per_run} article opportunities for Indian students and parents. Prioritise timely admissions, exams, counselling, scholarships, careers and college decisions. Do not copy competitors. Return JSON only: {topics:[{title,angle,primary_keyword,geo_focus,reason,category,tags:[...]}]}.`;
+    const topicPrompt = `You are the DekhoCampus education-news editor. Today is ${new Date().toISOString().slice(0, 10)} in India.\n\nResearch signals from competitor and own website pages:\n${JSON.stringify(signals)}\n\nRecent DekhoCampus article titles and slugs to avoid duplicates:\n${JSON.stringify(existingArticles.slice(0, 1500).map((a: any) => ({ title: a.title, slug: a.slug })))}\n\nPick the best ${Math.max(settings.posts_per_run * 2, 4)} article opportunities for Indian students and parents. Prioritise timely admissions, exams, counselling, scholarships, careers and college decisions. Reject anything already covered by DekhoCampus. Do not copy competitors. Return JSON only: {topics:[{title,angle,primary_keyword,geo_focus,reason,category,tags:[...]}]}.`;
     const topicRaw = await generateBlogJson(blogAi, topicPrompt + "\nUse natural plain language, never use an em dash, and return JSON only.");
-    const topics = (parseJson(topicRaw).topics || []).slice(0, settings.posts_per_run);
+    const topics = (parseJson(topicRaw).topics || []).filter((topic: any) => {
+      const candidateSlug = slugify(topic.title || "");
+      return candidateSlug && !existingSlugs.has(candidateSlug) && !existingTitles.has(normalizedTitle(topic.title)) && !isSimilarTitle(topic.title, existingTitleList);
+    }).slice(0, settings.posts_per_run);
+    await updateRun(admin, runId, {
+      progress: 30,
+      current_step: topics.length ? `Selected ${topics.length} original topic(s)` : "No new non-duplicate topics found",
+      selected_topics: topics,
+      sources: signals.map(({ signal, ...rest }: any) => rest),
+      completed_steps: 2,
+    });
 
     const createdIds: string[] = [];
-    for (const topic of topics) {
+    for (const [topicIndex, topic] of topics.entries()) {
+      const baseProgress = 30 + Math.round((topicIndex / Math.max(topics.length, 1)) * 65);
+      await updateRun(admin, runId, { progress: baseProgress, current_step: `Writing article ${topicIndex + 1} of ${topics.length}`, completed_steps: 2 + topicIndex * 3 });
       const articlePrompt = `Create a complete original DekhoCampus article from this approved topic:\n${JSON.stringify(topic)}\n\nResearch context:\n${JSON.stringify(signals)}\n\nTarget length: ${settings.word_limit} words.\n\nReturn JSON only: {title,slug,description,content_html,meta_title,meta_description,meta_keywords,tags,entity_suggestions:[{entity_type,entity_slug,label}],research_notes,cover_kicker}.\n\nRules: optimise for SEO, GEO, AEO and student usefulness. Use plain human wording, short paragraphs, useful headings, FAQs, and small hyphen '-' only. Never copy competitor wording. Avoid fake certainty on dates, fees, cutoffs or rules. Mention official-source verification where needed. Add a final Sources section with source names or official-source guidance.`;
       const articleRaw = await generateBlogJson(blogAi, articlePrompt + "\nFollow current SEO, GEO and AEO guidance. This is AI-assisted editor-reviewed content. Never claim human authorship, undetectability or 0 AI.");
       const draft = parseJson(articleRaw);
       const slug = slugify(draft.slug || draft.title || topic.title);
+      if (!slug || existingSlugs.has(slug) || existingTitles.has(normalizedTitle(draft.title || topic.title)) || isSimilarTitle(draft.title || topic.title, existingTitleList)) continue;
+      await updateRun(admin, runId, { progress: Math.min(90, baseProgress + 12), current_step: `Generating cover ${topicIndex + 1} of ${topics.length}`, completed_steps: 3 + topicIndex * 3 });
       const featured_image = await generateAndUploadBlogCover(admin, blogAi, slug, draft.hero_hook || draft.title || topic.title);
       const tags = Array.from(new Set([...(draft.tags || []), "auto-blog-agent"]));
 
-      const { data: article, error } = await admin.from("articles").upsert({
+      await updateRun(admin, runId, { progress: Math.min(96, baseProgress + 23), current_step: `Publishing article ${topicIndex + 1} of ${topics.length}`, completed_steps: 4 + topicIndex * 3 });
+      const { data: article, error } = await admin.from("articles").insert({
         title: draft.title || topic.title,
         slug,
         description: draft.description || topic.angle || "",
@@ -192,9 +250,13 @@ Deno.serve(async (req) => {
         featured_image,
         status: settings.publish_status,
         is_active: true,
-      }, { onConflict: "slug" }).select("id").single();
+      }).select("id").single();
       if (error) throw error;
       createdIds.push(article.id);
+      existingSlugs.add(slug);
+      const savedTitle = normalizedTitle(draft.title || topic.title);
+      existingTitles.add(savedTitle);
+      existingTitleList.push(savedTitle);
 
       for (const suggestion of draft.entity_suggestions || []) {
         await admin.from("article_links").upsert({ article_id: article.id, entity_type: suggestion.entity_type, entity_slug: suggestion.entity_slug }, { onConflict: "article_id,entity_type,entity_slug" });
@@ -205,6 +267,9 @@ Deno.serve(async (req) => {
     await admin.from("blog_auto_agent_settings").upsert({ id: "default", last_run_at: new Date().toISOString(), next_run_at: nextRun });
     if (runId) await admin.from("blog_auto_agent_runs").update({
       status: "completed",
+      progress: 100,
+      current_step: "Completed",
+      completed_steps: 2 + topics.length * 3,
       finished_at: new Date().toISOString(),
       sources: signals.map(({ signal, ...rest }) => rest),
       selected_topics: topics,
@@ -215,7 +280,7 @@ Deno.serve(async (req) => {
     return json({ success: true, created_article_ids: createdIds, topics, next_run_at: nextRun });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (runId) await admin.from("blog_auto_agent_runs").update({ status: "failed", finished_at: new Date().toISOString(), message }).eq("id", runId);
+    if (runId) await admin.from("blog_auto_agent_runs").update({ status: "failed", progress: 100, current_step: "Failed", finished_at: new Date().toISOString(), message }).eq("id", runId);
     return json({ error: message }, 400);
   }
 });

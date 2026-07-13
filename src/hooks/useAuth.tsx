@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { AppRole, can, canAccessModule, Module, Action } from "@/lib/rbac";
@@ -35,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [grants, setGrants] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+  const loadedUserId = useRef<string | null>(null);
 
   const loadRoles = useCallback(async (user: User) => {
     try {
@@ -73,15 +74,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
+      (event, newSession) => {
         setSession(newSession);
         if (newSession?.user) {
-          setIsLoading(true);
-          // Defer Supabase calls to avoid deadlock inside the auth callback
-          setTimeout(() => {
-            loadRoles(newSession.user).finally(() => setIsLoading(false));
-          }, 0);
+          // TOKEN_REFRESHED commonly fires when a background tab becomes visible.
+          // Roles are unchanged, so keep the protected route mounted and merely
+          // accept the refreshed session. Only gate the UI for a genuinely new user.
+          const needsRoleLoad = loadedUserId.current !== newSession.user.id || event === "SIGNED_IN";
+          if (needsRoleLoad) {
+            if (!loadedUserId.current) setIsLoading(true);
+            setTimeout(() => {
+              loadRoles(newSession.user).finally(() => {
+                loadedUserId.current = newSession.user.id;
+                setIsLoading(false);
+              });
+            }, 0);
+          }
         } else {
+          loadedUserId.current = null;
           setRoles([]); setGrants(new Set()); setIsAdmin(false);
           setIsLoading(false);
         }
@@ -89,7 +99,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
     supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => {
       setSession(initialSession);
-      if (initialSession?.user) await loadRoles(initialSession.user);
+      if (initialSession?.user) {
+        await loadRoles(initialSession.user);
+        loadedUserId.current = initialSession.user.id;
+      }
       else { setRoles([]); setIsAdmin(false); }
       setIsLoading(false);
     });
@@ -99,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    loadedUserId.current = null;
     setSession(null); setIsAdmin(false); setRoles([]);
   };
 

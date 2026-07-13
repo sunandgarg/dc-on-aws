@@ -8,6 +8,19 @@ export type BlogAiConfig = {
   imageQuality: "low" | "medium" | "high";
 };
 
+const DEFAULT_CLAUDE_TEXT_MODEL = "claude-sonnet-5";
+const LEGACY_CLAUDE_MODEL_IDS = new Set([
+  "claude-3-5-sonnet-20241022",
+  "claude-3-5-sonnet-latest",
+  "claude-3-5-sonnet",
+]);
+
+function normalizeClaudeTextModel(value: string | null | undefined) {
+  const model = String(value || "").trim();
+  if (!model) return DEFAULT_CLAUDE_TEXT_MODEL;
+  return LEGACY_CLAUDE_MODEL_IDS.has(model) ? DEFAULT_CLAUDE_TEXT_MODEL : model;
+}
+
 async function cryptoKey(serviceRoleKey: string) {
   const digest = await crypto.subtle.digest("SHA-256", encoder.encode(`dekhocampus-blog-ai:${serviceRoleKey}`));
   return crypto.subtle.importKey("raw", digest, "AES-GCM", false, ["encrypt", "decrypt"]);
@@ -40,7 +53,7 @@ export async function loadBlogAiConfig(admin: any, serviceRoleKey: string): Prom
   return {
     claudeKey: await decryptBlogSecret(data?.claude_api_key_ciphertext || "", serviceRoleKey),
     openaiKey: await decryptBlogSecret(data?.openai_api_key_ciphertext || "", serviceRoleKey),
-    textModel: data?.text_model || "claude-3-5-sonnet-20241022",
+    textModel: normalizeClaudeTextModel(data?.text_model),
     imageModel: data?.image_model || "gpt-image-2",
     imageQuality: data?.image_quality || "medium",
   };

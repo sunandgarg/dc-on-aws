@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bot, Clock, Loader2, Play, Save, Sparkles } from "lucide-react";
+import { Bot, CheckCircle2, Clock, ExternalLink, ImageIcon, Loader2, Play, Save, Sparkles, Timer } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
 
 type Settings = {
   enabled: boolean;
@@ -21,7 +22,22 @@ type Settings = {
 };
 
 type Source = { id?: string; name: string; url: string; source_type: "competitor" | "own"; is_active: boolean };
-type Run = { id: string; status: string; trigger_type: string; started_at: string; message: string; created_article_ids?: string[] };
+type Run = {
+  id: string;
+  status: "running" | "completed" | "skipped" | "failed";
+  trigger_type: string;
+  started_at: string;
+  finished_at?: string | null;
+  message: string;
+  created_article_ids?: string[];
+  progress?: number;
+  current_step?: string;
+  estimated_seconds?: number;
+  selected_topics?: Array<{ title?: string }>;
+};
+type GeneratedArticle = { id: string; title: string; slug: string; featured_image?: string; status?: string; description?: string };
+
+const DRAFT_KEY = "dc:admin:blog-agent:draft:v1";
 
 const DEFAULT_SETTINGS: Settings = {
   enabled: false,
@@ -49,9 +65,11 @@ export function BlogAutoAgentPanel({ onArticlesCreated }: { onArticlesCreated?: 
   const [runs, setRuns] = useState<Run[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [generatedArticles, setGeneratedArticles] = useState<GeneratedArticle[]>([]);
+  const [now, setNow] = useState(Date.now());
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (showLoader = false) => {
+    if (showLoader) setLoading(true);
     try {
       const [{ data: settingsData }, { data: sourceData }, { data: runData }] = await Promise.all([
         (supabase as any).from("blog_auto_agent_settings").select("*").eq("id", "default").maybeSingle(),
@@ -60,13 +78,49 @@ export function BlogAutoAgentPanel({ onArticlesCreated }: { onArticlesCreated?: 
       ]);
       if (settingsData) setSettings({ ...DEFAULT_SETTINGS, ...settingsData });
       if (sourceData?.length) setSources(sourceData);
-      if (runData) setRuns(runData);
+      if (runData) {
+        setRuns(runData);
+        const ids = Array.from(new Set(runData.flatMap((run: Run) => run.created_article_ids || [])));
+        if (ids.length) {
+          const { data } = await (supabase as any).from("articles")
+            .select("id,title,slug,featured_image,status,description")
+            .in("id", ids);
+          setGeneratedArticles(data || []);
+        }
+      }
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
     }
   };
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load(true).then(() => {
+      try {
+        const draft = sessionStorage.getItem(DRAFT_KEY);
+        if (draft) {
+          const parsed = JSON.parse(draft);
+          if (parsed.settings) setSettings((current) => ({ ...current, ...parsed.settings }));
+          if (parsed.sources) setSources(parsed.sources);
+        }
+      } catch { /* ignore invalid session draft */ }
+    });
+  }, []);
+
+  const activeRun = runs.find((run) => run.status === "running");
+
+  useEffect(() => {
+    if (!activeRun) return;
+    const timer = window.setInterval(() => {
+      setNow(Date.now());
+      void load(false);
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [activeRun?.id]);
+
+  useEffect(() => {
+    if (loading) return;
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ settings, sources }));
+  }, [settings, sources, loading]);
 
   const activeSourceCount = useMemo(() => sources.filter(s => s.is_active).length, [sources]);
   const updateSetting = (key: keyof Settings, value: any) => setSettings(prev => ({ ...prev, [key]: value }));
@@ -81,7 +135,8 @@ export function BlogAutoAgentPanel({ onArticlesCreated }: { onArticlesCreated?: 
         await (supabase as any).from("blog_research_sources").upsert({ ...source, display_order: (index + 1) * 10 }, { onConflict: "url" });
       }
       toast.success("Auto blog agent settings saved");
-      await load();
+      sessionStorage.removeItem(DRAFT_KEY);
+      await load(false);
     } catch (error: any) {
       toast.error(error.message || "Could not save blog agent settings");
     } finally {
@@ -92,10 +147,14 @@ export function BlogAutoAgentPanel({ onArticlesCreated }: { onArticlesCreated?: 
   const runNow = async () => {
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-blog-agent", { body: { trigger_type: "manual" } });
+      const invocation = supabase.functions.invoke("admin-blog-agent", { body: { trigger_type: "manual" } });
+      // The run row is created immediately. Start polling it while the long AI
+      // request continues, and keep that state recoverable after navigation.
+      window.setTimeout(() => { void load(false); }, 800);
+      const { data, error } = await invocation;
       if (error || data?.error) throw error || new Error(data.error);
       toast.success(`Created ${data.created_article_ids?.length || 0} blog article(s)`);
-      await load();
+      await load(false);
       onArticlesCreated?.();
     } catch (error: any) {
       toast.error(error.message || "Blog agent run failed");
@@ -123,11 +182,30 @@ export function BlogAutoAgentPanel({ onArticlesCreated }: { onArticlesCreated?: 
           <Button variant="outline" onClick={save} disabled={busy} className="gap-2 rounded-xl">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save
           </Button>
-          <Button onClick={runNow} disabled={busy || activeSourceCount < 2} className="gap-2 rounded-xl">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Run now
+          <Button onClick={runNow} disabled={busy || !!activeRun || activeSourceCount < 2} className="gap-2 rounded-xl">
+            {busy || activeRun ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {activeRun ? "Agent running" : "Run now"}
           </Button>
         </div>
       </div>
+
+      {activeRun && (
+        <div className="mt-4 overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-background to-orange-500/10 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 font-semibold"><Loader2 className="h-4 w-4 animate-spin text-primary" /> Blog agent is working</div>
+              <p className="mt-1 text-sm text-muted-foreground">{activeRun.current_step || "Preparing your articles"}</p>
+            </div>
+            <Badge variant="outline" className="gap-1 bg-background/80"><Timer className="h-3.5 w-3.5" /> {(() => {
+              const elapsed = Math.max(0, Math.round((now - new Date(activeRun.started_at).getTime()) / 1000));
+              const remaining = Math.max(0, Number(activeRun.estimated_seconds || 180) - elapsed);
+              return remaining > 0 ? `About ${Math.max(1, Math.ceil(remaining / 60))} min left` : "Finishing now";
+            })()}</Badge>
+          </div>
+          <Progress value={Math.max(2, activeRun.progress || 2)} className="mt-4 h-3" />
+          <div className="mt-2 flex justify-between text-xs text-muted-foreground"><span>{activeRun.progress || 2}% complete</span><span>You can safely switch tabs - this status will remain</span></div>
+          {!!activeRun.selected_topics?.length && <div className="mt-3 flex flex-wrap gap-2">{activeRun.selected_topics.map((topic, index) => <Badge key={`${topic.title}-${index}`} variant="secondary">{topic.title}</Badge>)}</div>}
+        </div>
+      )}
 
       <div className="mt-4 grid gap-3 lg:grid-cols-4">
         <div className="rounded-xl border p-3">
@@ -196,6 +274,25 @@ export function BlogAutoAgentPanel({ onArticlesCreated }: { onArticlesCreated?: 
         </div>
         {runs.length > 0 && <div className="mt-2 space-y-1">{runs.map(run => <div key={run.id}>• {new Date(run.started_at).toLocaleString()} - {run.status} - {run.message || `${run.created_article_ids?.length || 0} articles`}</div>)}</div>}
       </div>
+
+      {generatedArticles.length > 0 && (
+        <div className="mt-4">
+          <div className="mb-2 flex items-center gap-2 text-sm font-semibold"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Recently generated articles</div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {generatedArticles.map((article) => (
+              <a key={article.id} href={`/articles/${article.slug}`} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-xl border bg-card transition hover:-translate-y-0.5 hover:shadow-md">
+                <div className="aspect-[16/9] bg-muted">
+                  {article.featured_image ? <img src={article.featured_image} alt="" loading="lazy" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><ImageIcon className="h-8 w-8 text-muted-foreground" /></div>}
+                </div>
+                <div className="p-3">
+                  <div className="flex items-start justify-between gap-2"><h4 className="line-clamp-2 text-sm font-semibold">{article.title}</h4><ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary" /></div>
+                  <div className="mt-2"><Badge variant={article.status === "Published" ? "default" : "secondary"}>{article.status || "Draft"}</Badge></div>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
