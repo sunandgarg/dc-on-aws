@@ -33,14 +33,15 @@ export default function CatUniverseModulePage() {
   const resources = payload?.resources || [];
   const cutoffs = payload?.cutoffs || [];
   const isCatScorePage = module?.slug === "cat-score-calculator";
+  const currentYear = new Date().getFullYear();
   const seoTitle = isCatScorePage
-    ? `CAT Score Calculator ${new Date().getFullYear()} - Predict CAT Score vs Percentile | DekhoCampus`
+    ? `CAT Score Calculator ${currentYear} - Response Sheet, Score & Percentile Predictor`
     : module ? `${module.title} - CAT Universe` : "CAT Universe";
   const seoDescription = isCatScorePage
-    ? "Use DekhoCampus CAT Score Calculator to estimate CAT raw score, expected percentile, and shortlist direction. Compare section-wise performance and explore likely MBA options."
+    ? `Use the CAT Score Calculator ${currentYear} to analyse your official response sheet or enter VARC, DILR and QA attempts manually. Estimate raw score, percentile range and likely MBA college options.`
     : module?.description || settings?.seo_description;
   const seoKeywords = isCatScorePage
-    ? "CAT score calculator, CAT percentile predictor, CAT score vs percentile, CAT raw score calculator, MBA CAT calculator"
+    ? `CAT score calculator ${currentYear}, CAT response sheet calculator ${currentYear}, CAT percentile predictor, CAT score vs percentile, CAT raw score calculator, MBA college predictor`
     : `CAT Universe, ${module?.title || "MBA tools"}, MBA leads, MBA counselling`;
   const faqJsonLd = isCatScorePage ? [
     {
@@ -112,6 +113,26 @@ export default function CatUniverseModulePage() {
           },
           {
             "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": `DekhoCampus CAT Score Calculator ${currentYear}`,
+            "applicationCategory": "EducationalApplication",
+            "operatingSystem": "Web",
+            "isAccessibleForFree": true,
+            "description": seoDescription,
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "HowTo",
+            "name": `How to use the CAT Score Calculator ${currentYear}`,
+            "step": [
+              { "@type": "HowToStep", "name": "Open your official CAT response sheet" },
+              { "@type": "HowToStep", "name": "Paste the official response-sheet URL or enter section attempts manually" },
+              { "@type": "HowToStep", "name": "Review estimated raw score and percentile range" },
+              { "@type": "HowToStep", "name": "Compare likely MBA college cut-off zones" },
+            ],
+          },
+          {
+            "@context": "https://schema.org",
             "@type": "FAQPage",
             "mainEntity": faqJsonLd,
           },
@@ -127,12 +148,18 @@ export default function CatUniverseModulePage() {
 
         <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
           <div className="space-y-6">
+            {isCatScorePage ? <CatUniverseCalculator examKey={module.exam_key} cutoffs={cutoffs} /> : null}
+
             <section className="rounded-[32px] border border-border bg-card p-6 md:p-8">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="rounded-full bg-primary/10 text-primary hover:bg-primary/10">{section.title}</Badge>
                 {module.badge ? <Badge variant="outline">{module.badge}</Badge> : null}
               </div>
-              <h1 className="mt-4 text-3xl font-black tracking-tight text-foreground md:text-4xl">{module.title}</h1>
+              {isCatScorePage ? (
+                <h2 className="mt-4 text-3xl font-black tracking-tight text-foreground md:text-4xl">CAT Score Calculator {currentYear} guide and manual estimator</h2>
+              ) : (
+                <h1 className="mt-4 text-3xl font-black tracking-tight text-foreground md:text-4xl">{module.title}</h1>
+              )}
               <p className="mt-3 text-lg text-muted-foreground">{module.subtitle}</p>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-muted-foreground">{module.description}</p>
 
@@ -152,7 +179,7 @@ export default function CatUniverseModulePage() {
               </div>
             </section>
 
-            {module.module_type === "calculator" ? (
+            {module.module_type === "calculator" && !isCatScorePage ? (
               <CatUniverseCalculator examKey={module.exam_key} cutoffs={cutoffs} />
             ) : null}
 
@@ -190,10 +217,10 @@ export default function CatUniverseModulePage() {
             {isCatScorePage ? (
               <>
                 <section className="rounded-3xl border border-border bg-card p-5 md:p-6">
-                  <h2 className="text-2xl font-black text-foreground">Why this CAT score calculator is built to rank</h2>
+                  <h2 className="text-2xl font-black text-foreground">CAT Score Calculator {currentYear} - score, percentile and shortlist in one flow</h2>
                   <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                    This page is structured around the keywords students actually search after the exam - CAT score calculator, CAT percentile predictor, CAT score vs percentile,
-                    and CAT raw score calculator. Instead of showing only a number, it combines score estimation, percentile interpretation, shortlist cues, and decision-next-step content.
+                    Use your official response sheet or section-wise VARC, DILR and QA attempts to estimate a CAT raw score. The calculator then converts that signal into a likely percentile range,
+                    explains score-versus-percentile movement and surfaces MBA college cut-off zones worth exploring next.
                   </p>
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     {[

@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.admin-data-cleaner]
 verify_jwt = false
+
+[functions.cat-response-analyzer]
+verify_jwt = false

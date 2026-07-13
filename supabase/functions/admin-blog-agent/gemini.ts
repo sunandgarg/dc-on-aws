@@ -1,5 +1,5 @@
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
-export const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-2.0-flash";
+export const GEMINI_MODEL = "gemini-3.5-flash";
 
 function apiKey() {
   return Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_AI_API_KEY") || "";

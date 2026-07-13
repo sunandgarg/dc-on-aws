@@ -12,6 +12,10 @@ import {
   Clock3,
   FileText,
   LineChart,
+  Link2,
+  Loader2,
+  LockKeyhole,
+  ShieldCheck,
   Sparkles,
   Target,
   TrendingUp,
@@ -21,6 +25,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { LeadCaptureForm } from "@/components/LeadCaptureForm";
+import { toast } from "sonner";
+import { functionUrl } from "@/lib/backendMode";
 import {
   CAT_UNIVERSE_EXAM_LABELS,
   parseMultiline,
@@ -220,6 +226,10 @@ export function CatUniverseCalculator({
   const benchmark = BENCHMARKS[examKey] || BENCHMARKS.cat;
   const isCat = examKey === "cat";
   const [slot, setSlot] = useState("Slot 1");
+  const [responseUrl, setResponseUrl] = useState("");
+  const [leadOpen, setLeadOpen] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisNote, setAnalysisNote] = useState("");
 
   const [catInputs, setCatInputs] = useState({
     varcCorrect: 0,
@@ -270,9 +280,107 @@ export function CatUniverseCalculator({
     return "You should widen your application basket and use profile strength carefully.";
   }, [percentile]);
 
+  const analyzeResponseSheet = async () => {
+    setAnalyzing(true);
+    setAnalysisNote("");
+    try {
+      const response = await fetch(functionUrl("cat-response-analyzer"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ response_url: responseUrl }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Response-sheet analysis failed");
+      if (!data.success) {
+        setAnalysisNote(data.warnings?.[0] || "The sheet did not contain enough explicit answer-key information. Use the manual calculator below.");
+        return;
+      }
+      setCatInputs({
+        varcCorrect: Number(data.sections?.varc?.correct || 0),
+        varcIncorrect: Number(data.sections?.varc?.incorrect || 0),
+        dilrCorrect: Number(data.sections?.dilr?.correct || 0),
+        dilrIncorrect: Number(data.sections?.dilr?.incorrect || 0),
+        qaCorrect: Number(data.sections?.qa?.correct || 0),
+        qaIncorrect: Number(data.sections?.qa?.incorrect || 0),
+      });
+      if (["Slot 1", "Slot 2", "Slot 3"].includes(data.slot)) setSlot(data.slot);
+      setAnalysisNote(`Gemini extracted the response sheet with ${Math.round(Number(data.confidence || 0) * 100)}% confidence. Review the section counts below before using the estimate.`);
+      document.getElementById("manual-cat-score-calculator")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      toast.success("CAT response sheet analysed");
+    } catch (error) {
+      setAnalysisNote(error instanceof Error ? error.message : "Response-sheet analysis failed. Use the manual calculator below.");
+      toast.error(error instanceof Error ? error.message : "Response-sheet analysis failed");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-border bg-card p-5">
+      {isCat ? (
+        <section className="relative overflow-hidden rounded-[32px] border border-blue-200/60 bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 p-5 text-white shadow-2xl shadow-blue-950/15 md:p-8">
+          <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-blue-500/25 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-28 left-1/4 h-64 w-64 rounded-full bg-orange-400/15 blur-3xl" />
+          <div className="relative grid gap-7 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold text-blue-100">
+                <Sparkles className="h-3.5 w-3.5" /> Gemini-powered CAT response analysis
+              </div>
+              <h1 className="mt-4 max-w-3xl text-3xl font-black leading-tight tracking-tight md:text-5xl">
+                CAT Score Calculator {new Date().getFullYear()} - turn your response sheet into a clear score story.
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-blue-100/80 md:text-base">
+                Paste the official Digialm or IIM CAT response-sheet link. We extract section-wise attempts, calculate the raw-score signal, and move you straight towards percentile and B-school decisions.
+              </p>
+              <div className="mt-5 grid gap-2 sm:grid-cols-3">
+                {[
+                  [ShieldCheck, "Official links only"],
+                  [LockKeyhole, "Lead-gated access"],
+                  [LineChart, "Section-wise output"],
+                ].map(([Icon, label]: any) => (
+                  <div key={label} className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.07] px-3 py-2 text-xs font-semibold text-blue-50">
+                    <Icon className="h-4 w-4 text-orange-300" /> {label}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[26px] border border-white/15 bg-white/[0.09] p-4 shadow-xl backdrop-blur md:p-5">
+              <div className="flex items-center gap-2 text-sm font-bold"><Link2 className="h-4 w-4 text-orange-300" /> Official response-sheet URL</div>
+              <Input
+                value={responseUrl}
+                onChange={(event) => setResponseUrl(event.target.value)}
+                placeholder="https://cdn.digialm.com/.../response.html"
+                className="mt-3 h-12 rounded-2xl border-white/15 bg-white text-slate-950 placeholder:text-slate-400"
+                aria-label="Official CAT response sheet URL"
+              />
+              <Button
+                type="button"
+                disabled={!responseUrl.trim() || analyzing}
+                onClick={() => setLeadOpen(true)}
+                className="mt-3 h-12 w-full rounded-2xl bg-orange-500 font-extrabold text-white shadow-lg shadow-orange-950/20 hover:bg-orange-400"
+              >
+                {analyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                {analyzing ? "Analysing response sheet..." : "Analyse my CAT response sheet"}
+              </Button>
+              <button
+                type="button"
+                onClick={() => document.getElementById("manual-cat-score-calculator")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="mt-3 w-full text-center text-xs font-semibold text-blue-100 underline-offset-4 hover:underline"
+              >
+                No response-sheet link? Use the manual calculator
+              </button>
+              {analysisNote ? <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950/30 p-3 text-xs leading-5 text-blue-50">{analysisNote}</div> : null}
+              <p className="mt-3 text-[10px] leading-4 text-blue-100/60">The sheet is processed by Gemini for this calculation and the URL is not stored by this tool. Estimates are directional; CAT normalization and the official result remain final.</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <div id={isCat ? "manual-cat-score-calculator" : undefined} className="scroll-mt-24 rounded-3xl border border-border bg-card p-5">
         <div className="flex flex-wrap items-center gap-2">
           <Badge className="rounded-full">{CAT_UNIVERSE_EXAM_LABELS[examKey] || examKey.toUpperCase()} estimator</Badge>
           <span className="text-sm text-muted-foreground">Directional only - always treat official results as final.</span>
@@ -475,6 +583,17 @@ export function CatUniverseCalculator({
             </div>
           </section>
         </>
+      ) : null}
+
+      {isCat ? (
+        <AILeadForm
+          isOpen={leadOpen}
+          onClose={() => setLeadOpen(false)}
+          onSubmit={() => {
+            setLeadOpen(false);
+            void analyzeResponseSheet();
+          }}
+        />
       ) : null}
     </div>
   );

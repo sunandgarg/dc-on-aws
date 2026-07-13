@@ -8,6 +8,7 @@ import { CommandPalette } from "@/components/admin/CommandPalette";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { CleanDataShortcut } from "@/components/admin/CleanDataShortcut";
 
 interface NavItem { label: string; href: string; icon: ElementType; module?: Module; }
 interface NavGroup { label: string; description: string; icon: ElementType; items: NavItem[]; }
@@ -345,7 +346,10 @@ export function AdminLayout({ children, title }: AdminLayoutProps) {
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
-          <div className="mx-auto w-full max-w-[1600px]">{children}</div>
+          <div className="mx-auto w-full max-w-[1600px]">
+            <CleanDataShortcut pathname={location.pathname} />
+            {children}
+          </div>
         </main>
         <CommandPalette />
       </div>

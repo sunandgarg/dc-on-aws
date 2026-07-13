@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,9 @@ const ENTITY_OPTIONS = [
   { id: "careers", label: "Careers", table: "career_profiles", name: "name" },
   { id: "scholarships", label: "Scholarships", table: "scholarships", name: "title" },
   { id: "articles", label: "Articles", table: "articles", name: "title" },
+  { id: "study_material", label: "Study Material", table: "study_subjects", name: "name" },
+  { id: "college_study", label: "College Study", table: "college_universities", name: "name" },
+  { id: "cat_universe", label: "CAT Universe", table: "cat_universe_modules", name: "title" },
 ] as const;
 
 const terminalStatuses = new Set(["completed", "cancelled", "failed"]);
@@ -46,7 +50,9 @@ function formatDuration(seconds: number) {
 
 export default function AdminDataCleaner() {
   const qc = useQueryClient();
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(["colleges"]);
+  const [searchParams] = useSearchParams();
+  const requestedTypes = (searchParams.get("types") || "").split(",").filter((id) => ENTITY_OPTIONS.some((option) => option.id === id));
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(requestedTypes.length ? requestedTypes : ["colleges"]);
   const [batchSize, setBatchSize] = useState(100);
   const [maxRecords, setMaxRecords] = useState(100);
   const [autoApply, setAutoApply] = useState(false);
@@ -196,7 +202,7 @@ export default function AdminDataCleaner() {
                 <div><Label>Maximum records this run</Label><Input type="number" min={0} value={maxRecords} onChange={(e) => setMaxRecords(Math.max(0, Number(e.target.value) || 0))} /><p className="mt-1 text-[11px] text-muted-foreground">0 means all selected records</p></div>
                 <div className="rounded-2xl border p-3"><div className="flex items-center justify-between gap-3"><div><Label>Auto-apply verified changes</Label><p className="text-[11px] text-muted-foreground">Off keeps changes for review</p></div><Switch checked={autoApply} onCheckedChange={setAutoApply} /></div></div>
               </div>
-              {autoApply && <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">Only changes with at least 80% confidence and matching official-domain citations are applied. Identity, slugs, images, ratings, reviews and commercial priority fields remain protected.</div>}
+              {autoApply && <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">Only changes with at least 80% confidence and matching official-domain citations are applied. Identity, slugs, ratings, reviews and commercial priority fields remain protected. Official image, logo, gallery and document links can be proposed and remain fully visible in the audit.</div>}
               <p className="text-xs text-muted-foreground">Cost guardrail: begin with 100 records in review mode. Each record can use up to five Claude web searches plus generation tokens, so processing all 13,000+ records is intentionally never started automatically.</p>
             </CardContent>
           </Card>

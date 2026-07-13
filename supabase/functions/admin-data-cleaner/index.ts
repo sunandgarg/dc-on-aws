@@ -15,6 +15,9 @@ const TABLES: Record<string, string> = {
   careers: "career_profiles",
   scholarships: "scholarships",
   articles: "articles",
+  study_material: "study_subjects",
+  college_study: "college_universities",
+  cat_universe: "cat_universe_modules",
 };
 
 const ALLOWED_FIELDS: Record<string, string[]> = {
@@ -24,6 +27,7 @@ const ALLOWED_FIELDS: Record<string, string[]> = {
     "admission_deadline", "scholarship_available", "scholarship_details", "placement", "placement_content",
     "rankings_content", "facilities", "facilities_content", "highlights", "approvals", "affiliation_kind",
     "naac_grade", "top_recruiters", "hostel_life", "course_fee_content", "meta_title", "meta_description", "meta_keywords",
+    "image", "logo", "carousel_images", "gallery_images", "brochure_url", "approval_logos", "banner_ad_image", "square_ad_image",
   ],
   courses: [
     "official_website", "name", "full_name", "description", "short_description", "page_summary", "category", "categories",
@@ -31,6 +35,7 @@ const ALLOWED_FIELDS: Record<string, string[]> = {
     "low_fee", "high_fee", "avg_fees", "avg_salary", "growth", "specializations", "subjects", "top_exams", "careers",
     "about_content", "admission_process", "cutoff_content", "fees_content", "placements_content", "recruiters_content",
     "scope_content", "specialization_content", "subjects_content", "syllabus_content", "meta_title", "meta_description", "meta_keywords",
+    "image", "syllabus_pdf_url",
   ],
   exams: [
     "official_website", "website", "name", "short_name", "full_name", "description", "page_summary", "category", "categories",
@@ -38,21 +43,30 @@ const ALLOWED_FIELDS: Record<string, string[]> = {
     "application_start_date", "application_end_date", "exam_date", "result_date", "registration_url", "brochure_url",
     "application_process", "exam_pattern", "negative_marking", "cast_wise_fee", "gender_wise", "important_dates", "syllabus",
     "seats", "summary_content", "dates_content", "cutoff_content", "result_content", "counselling_content", "center_content",
-    "preparation_tips", "meta_title", "meta_description", "meta_keywords",
+    "preparation_tips", "meta_title", "meta_description", "meta_keywords", "image", "logo",
   ],
   careers: [
     "official_website", "name", "domain", "short_description", "description", "page_summary", "avg_salary", "growth",
     "experience_required", "top_skills", "top_companies", "job_roles", "related_courses", "related_exams",
-    "meta_title", "meta_description", "meta_keywords",
+    "meta_title", "meta_description", "meta_keywords", "image",
   ],
   scholarships: [
     "official_website", "title", "provider", "description", "page_summary", "category", "level", "amount", "deadline",
-    "eligibility", "apply_url", "meta_title", "meta_description",
+    "eligibility", "apply_url", "meta_title", "meta_description", "image",
   ],
   articles: [
-    "official_website", "title", "description", "content", "category", "vertical", "tags", "meta_title", "meta_description", "meta_keywords",
+    "official_website", "title", "description", "content", "category", "vertical", "tags", "meta_title", "meta_description", "meta_keywords", "featured_image",
   ],
+  study_material: ["official_website", "name", "description", "cover_image"],
+  college_study: ["official_website", "name", "short_name", "state", "city", "logo", "description", "total_semesters", "meta_title", "meta_description"],
+  cat_universe: ["official_website", "title", "subtitle", "description", "detail_points", "audience_text", "meta_title", "meta_description"],
 };
+
+const MEDIA_ARRAY_FIELDS = new Set(["carousel_images", "gallery_images", "approval_logos"]);
+const MEDIA_URL_FIELDS = new Set([
+  "image", "logo", "cover_image", "featured_image", "brochure_url", "syllabus_pdf_url",
+  "banner_ad_image", "square_ad_image",
+]);
 
 const BLOCKED_HOST_PARTS = [
   "shiksha", "careers360", "collegedunia", "collegedekho", "collegebatch", "getmyuni", "collegepravesh",
@@ -187,6 +201,8 @@ Fields you may propose: ${allowedFields.join(", ")}
 
 Find and verify the official website. Use current official facts only. Do not overwrite a valid field merely to rephrase it. Never invent fees, dates, rankings, placements, salary, cutoffs, approvals, URLs, or statistics. For fee ranges, store plain numeric values only in numeric fields and concise human-readable values in text fields. Established must be a four-digit integer. Dates must be unambiguous. Write useful, original SEO/GEO/AEO copy grounded only in verified facts, with clear headings where HTML is appropriate. Do not use an em dash.
 
+For media fields, return only direct HTTPS links found on the verified official website: the institution logo, primary campus or content image, official gallery images, and official brochure/PDF where available. Do not use Google Images, social media, stock photos, hotlinked education-directory images, screenshots, or generated images. Leave a media field unchanged when the official source does not expose a suitable asset.
+
 Return JSON only with this shape:
 {"official_url":"https://...","confidence":0.0,"updates":{},"field_evidence":{"field":["https://official-source..."]},"warnings":[],"source_urls":["https://official-source..."]}
 Every updated factual field must have field_evidence. If no official source can verify the identity, return confidence below 0.8 and updates {}.`;
@@ -229,12 +245,12 @@ function normalizeValue(field: string, value: unknown, current: unknown) {
     return Number.isFinite(number) && number >= 0 ? number : undefined;
   }
   if (typeof current === "boolean") return typeof value === "boolean" ? value : undefined;
-  if (Array.isArray(current)) return Array.isArray(value) ? [...new Set(value.map((item) => cleanString(item, 500)).filter(Boolean))].slice(0, 100) : undefined;
+  if (Array.isArray(current) || MEDIA_ARRAY_FIELDS.has(field)) return Array.isArray(value) ? [...new Set(value.map((item) => normalizeUrl(item)).filter(Boolean))].slice(0, 100) : undefined;
   if (typeof current === "object" && current !== null) return typeof value === "object" ? value : undefined;
   if (field === "meta_title") return cleanString(value, 65);
   if (field === "meta_description") return cleanString(value, 170);
   if (field === "page_summary") return cleanString(value, 600);
-  if (field.includes("url") || field === "website" || field === "official_website") return normalizeUrl(value) || undefined;
+  if (field.includes("url") || field === "website" || field === "official_website" || MEDIA_URL_FIELDS.has(field)) return normalizeUrl(value) || undefined;
   return cleanString(value);
 }
 
