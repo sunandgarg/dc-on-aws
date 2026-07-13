@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ChevronDown, GraduationCap, BookOpen, FileText, Briefcase, Stethoscope, Palette, Library, Sparkles, Trophy, Globe2, Scale, Layers, Award, NotebookPen, Newspaper } from "lucide-react";
+import { ChevronDown, GraduationCap, BookOpen, FileText, Briefcase, Stethoscope, Palette, Sparkles, Trophy, Scale, Award, NotebookPen, Newspaper } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
@@ -185,33 +185,31 @@ export function MegaMenu() {
       ],
     },
     {
-      label: "Resources",
+      label: "CAT Universe",
+      href: "/cat-universe",
       columns: [
-        { title: "CAT Universe", items: [
+        { title: "Post Exam", items: [
           { label: "CAT Score Calculator", href: "/cat-universe/cat-score-calculator" },
-          { label: "IIM Call Predictor", href: "/cat-universe/iim-call-predictor" },
           { label: "XAT Score Calculator", href: "/cat-universe/xat-score-calculator" },
           { label: "CMAT Score Calculator", href: "/cat-universe/cmat-score-calculator" },
+          { label: "SOP, Score and WAT Desk", href: "/cat-universe/sop-exam-score-wat" },
+        ] },
+        { title: "Pre Exam", items: [
+          { label: "Last 10 Year CAT Papers", href: "/cat-universe/cat-previous-year-papers" },
+          { label: "XAT Previous Papers", href: "/cat-universe/xat-previous-year-papers" },
+          { label: "MAT Previous Papers", href: "/cat-universe/mat-previous-year-papers" },
+          { label: "GMAT Previous Papers", href: "/cat-universe/gmat-previous-year-papers" },
+        ] },
+        { title: "Post Result", items: [
+          { label: "IIM Call Predictor", href: "/cat-universe/iim-call-predictor" },
+          { label: "Interview Calls and Converts", href: "/cat-universe/interview-calls-converts" },
+          { label: "Mock Interviews and Dockets", href: "/cat-universe/mock-interview-and-dockets" },
+        ] },
+        { title: "College Cut-offs", items: [
+          { label: "CAT College Cut-offs", href: "/cat-universe/cat-based-college-cutoffs" },
+          { label: "NMAT College Cut-offs", href: "/cat-universe/nmat-based-college-cutoffs" },
+          { label: "XAT College Cut-offs", href: "/cat-universe/xat-based-college-cutoffs" },
           { label: "All CAT Universe →", href: "/cat-universe" },
-        ] },
-        { title: "News & Updates", items: [
-          { label: "📰 Latest News", href: "/news" },
-          { label: "🎓 Admission News", href: "/news/tag/admissions" },
-          { label: "📊 Result Updates", href: "/news/tag/result" },
-          { label: "All news →", href: "/news" },
-        ] },
-        { title: "Free AI Tools", items: [
-          { label: "✨ AI College Finder", href: "/tools" },
-          { label: "🎯 Rank Predictor", href: "/tools" },
-          { label: "💸 EMI Calculator", href: "/tools" },
-          { label: "All tools →", href: "/tools" },
-        ] },
-        { title: "Career & Guides", items: [
-          { label: "💼 Career Profiles", href: "/careers" },
-          { label: "🚀 Vacancies", href: "/vacancies" },
-          { label: "📚 Guides & Tips", href: "/news/tag/tips" },
-          { label: "🌍 Study Abroad", href: "/study-abroad" },
-          { label: "🎓 Online Degrees", href: "/online-degrees" },
         ] },
       ],
     },
@@ -227,7 +225,7 @@ export function MegaMenu() {
     if (l === "Exams") return FileText;
     if (l === "Scholarships") return Award;
     if (l === "Study Material") return NotebookPen;
-    if (l === "Resources") return Library;
+    if (l === "CAT Universe") return Sparkles;
     if (l === "News") return Newspaper;
     return Sparkles;
   };

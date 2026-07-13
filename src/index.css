@@ -450,6 +450,19 @@
 }
 
 @layer components {
+  /* A removed Color Picker extension can leave its magnifier content script
+     alive in already-open tabs until Chrome is restarted. Keep that injected
+     overlay from covering the college filters even in a stale tab. */
+  body > #cp-magnifier,
+  body > #cp-magnifier-container,
+  body > .cp-magnifier,
+  body > [data-color-picker-magnifier],
+  body > [id*="color-picker"][id*="magnifier"] {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
   /* Blue vertical bar before section headings - applied via `data-h` attribute
      so callers don't need to add wrapper markup. Used across detail pages
      (college, course, exam, career, scholarship, article, etc.) to match

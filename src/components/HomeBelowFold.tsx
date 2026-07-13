@@ -49,7 +49,7 @@ export default function HomeBelowFold() {
       <FeaturesSection />
       <GoogleAd placement="homepage" position="middle" pageKey="homepage" className="my-4" />
       <div id="faq-heading"><FAQSection page="homepage" title="Frequently Asked Questions" /></div>
-      <div id="premium-programs-heading"><TrendingPrograms /></div>
+      <div id="trending-programs-heading"><TrendingPrograms /></div>
       <div id="trusted-heading"><TrustedBySection /></div>
     </div>
     <Footer />

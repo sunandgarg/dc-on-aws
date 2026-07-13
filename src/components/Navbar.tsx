@@ -21,13 +21,13 @@ const mobileNav = [
     { label: "Class 9",  href: "/study-material/class-9"  },
     { label: "Class 8",  href: "/study-material/class-8"  },
   ] },
-  { label: "Resources", href: "/resources", children: [
-    { label: "✨ CAT Universe", href: "/cat-universe" },
-    { label: "📰 News & Updates", href: "/news" },
-    { label: "🧰 AI Tools", href: "/tools" },
-    { label: "🎓 Career Guides", href: "/careers" },
-    { label: "🚀 Vacancies", href: "/vacancies" },
-    { label: "📚 All Resources", href: "/resources" },
+  { label: "CAT Universe", href: "/cat-universe", children: [
+    { label: "CAT Score Calculator", href: "/cat-universe/cat-score-calculator" },
+    { label: "IIM Call Predictor", href: "/cat-universe/iim-call-predictor" },
+    { label: "XAT Score Calculator", href: "/cat-universe/xat-score-calculator" },
+    { label: "Previous Year CAT Papers", href: "/cat-universe/cat-previous-year-papers" },
+    { label: "CAT College Cut-offs", href: "/cat-universe/cat-based-college-cutoffs" },
+    { label: "Explore CAT Universe", href: "/cat-universe" },
   ] },
 ];
 
