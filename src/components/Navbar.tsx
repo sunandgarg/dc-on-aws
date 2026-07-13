@@ -8,7 +8,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { MegaMenu } from "@/components/MegaMenu";
 
 const mobileNav = [
-  { label: "CAT Universe", href: "/cat-universe" },
   { label: "Colleges", href: "/colleges" },
   { label: "Courses", href: "/courses" },
   { label: "Exams", href: "/exams" },
@@ -23,6 +22,7 @@ const mobileNav = [
     { label: "Class 8",  href: "/study-material/class-8"  },
   ] },
   { label: "Resources", href: "/resources", children: [
+    { label: "✨ CAT Universe", href: "/cat-universe" },
     { label: "📰 News & Updates", href: "/news" },
     { label: "🧰 AI Tools", href: "/tools" },
     { label: "🎓 Career Guides", href: "/careers" },
