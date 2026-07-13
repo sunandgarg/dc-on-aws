@@ -240,6 +240,8 @@ function sanitizePayload(entity: Entity, payload: Json): Json {
       avg_salary: text(base.avg_salary, 255) ?? "",
       growth: text(base.growth, 255) ?? "",
       image: url(base.image) ?? "",
+      description: text(base.description) ?? "",
+      eligibility: text(base.eligibility) ?? "",
       top_exams: slugList(base.top_exams),
       careers: stringList(base.careers),
       subjects: stringList(base.subjects),
