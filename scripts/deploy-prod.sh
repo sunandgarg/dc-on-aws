@@ -36,4 +36,4 @@ fi
 echo "Pushing '$BRANCH' to origin..."
 git push origin "$BRANCH"
 
-echo "Pushed. Vercel should start deployment automatically."
+echo "Pushed. Cloudflare Pages should start deployment automatically once Git integration is connected."

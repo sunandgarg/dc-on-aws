@@ -31,7 +31,6 @@ export default function HomeBelowFold() {
     <div className="container"><TopRankedColleges /></div>
     <div className="container"><HeroBannerCarousel /></div>
     <div className="container"><CategorySection /></div>
-    <div className="container"><TrendingPrograms /></div>
     <div className="container">
       <div id="explore-cta-heading"><ExploreCTACards /></div>
       <section className="py-4"><DynamicAdBanner variant="leaderboard" position="mid-page" /></section>
@@ -50,6 +49,7 @@ export default function HomeBelowFold() {
       <FeaturesSection />
       <GoogleAd placement="homepage" position="middle" pageKey="homepage" className="my-4" />
       <div id="faq-heading"><FAQSection page="homepage" title="Frequently Asked Questions" /></div>
+      <div id="premium-programs-heading"><TrendingPrograms /></div>
       <div id="trusted-heading"><TrustedBySection /></div>
     </div>
     <Footer />
@@ -57,4 +57,3 @@ export default function HomeBelowFold() {
     <PeriodicLeadPopup />
   </>;
 }
-

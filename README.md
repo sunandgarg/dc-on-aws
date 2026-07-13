@@ -2,15 +2,42 @@
 
 ## Production hosting
 
-The React frontend is deployed by Vercel from GitHub. The backend is Supabase:
-Postgres, Auth, Storage, and the Edge Functions under `supabase/functions`.
+The React frontend is deployed by **Cloudflare Pages** from GitHub. The backend
+remains Supabase: Postgres, Auth, Storage, and the Edge Functions under
+`supabase/functions`. Cloudflare serves the static Vite build; it does not
+replace Supabase or require database credentials in the browser.
 
-Vercel environment variables (Production and Preview):
+In Cloudflare Pages, connect the GitHub repository and use:
+
+| Setting | Value |
+| --- | --- |
+| Production branch | `main` |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+
+Set these Cloudflare Pages environment variables for **Production** and
+**Preview** builds:
 
 ```env
 VITE_SUPABASE_URL=https://kozdctbbvrnyddlftmvf.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
+
+`public/_redirects` provides the React Router fallback, so refreshing a route
+such as `/auth` or `/college/example` works on Cloudflare Pages. The Cloudflare
+Pages Function at `/api/blog-agent-cron` is available for authenticated manual
+runs. The 30-minute schedule is the separate Worker in
+`workers/blog-agent-scheduler`, because Cron Triggers run Workers rather than
+Pages Functions. Deploy it once and set its secrets:
+
+```sh
+npx wrangler deploy --config workers/blog-agent-scheduler/wrangler.jsonc
+npx wrangler secret put SUPABASE_URL --config workers/blog-agent-scheduler/wrangler.jsonc
+npx wrangler secret put BLOG_AGENT_SECRET --config workers/blog-agent-scheduler/wrangler.jsonc
+```
+
+The Worker configuration declares `*/30 * * * *` in UTC. Do not use a
+publishable key or service-role key as a Cloudflare frontend variable.
 
 To provision a fresh Supabase project from this repository, authenticate the
 Supabase CLI, then run the following from the repository root. This applies the
@@ -27,9 +54,9 @@ for fn in supabase/functions/*; do
 done
 ```
 
-For Google sign-in, add the Vercel production URL and preview URL to Supabase
-Authentication → URL Configuration, then enable Google in Authentication →
-Providers using its OAuth client credentials.
+For Google sign-in, add the Cloudflare production URL, Pages preview URL, and
+custom domain to Supabase Authentication → URL Configuration, then enable
+Google in Authentication → Providers using its OAuth client credentials.
 
 ## Legacy content migration
 
