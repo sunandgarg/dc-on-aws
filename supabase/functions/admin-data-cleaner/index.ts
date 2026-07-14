@@ -3,6 +3,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { generateBlogJson, loadBlogAiConfig, resolveClaudeTextModel, type BlogAiConfig } from "../_shared/blog-ai.ts";
 import { logAiUsage } from "../_shared/ai-usage.ts";
 import { applyClaudeRuntimeControl, getAiRuntimeControl } from "../_shared/ai-control.ts";
+import { geminiGenerate } from "../_shared/gemini.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -187,8 +188,9 @@ async function fetchOfficialPage(url: string) {
   } catch { return ""; } finally { clearTimeout(timer); }
 }
 
-async function researchWithClaude(config: BlogAiConfig, entityType: string, row: Record<string, unknown>) {
-  const model = await resolveClaudeTextModel(config);
+async function researchWithAi(admin: any, config: BlogAiConfig, entityType: string, row: Record<string, unknown>) {
+  const runtime = await getAiRuntimeControl(admin, "data-cleaner");
+  const provider = runtime.provider || "anthropic";
   const name = String(row.name || row.title || row.slug || "");
   const seedUrl = seedOfficialUrl(row);
   const directText = await fetchOfficialPage(seedUrl);
@@ -208,6 +210,35 @@ For media fields, return only direct HTTPS links found on the verified official 
 Return JSON only with this shape:
 {"official_url":"https://...","confidence":0.0,"updates":{},"field_evidence":{"field":["https://official-source..."]},"warnings":[],"source_urls":["https://official-source..."]}
 Every updated factual field must have field_evidence. If no official source can verify the identity, return confidence below 0.8 and updates {}.`;
+
+  if (provider === "gemini") {
+    const model = runtime.model || "gemini-3.5-flash";
+    if (!seedUrl || !directText || !pageMatchesEntity(directText, name)) {
+      return {
+        parsed: {
+          official_url: seedUrl || "",
+          confidence: 0.5,
+          updates: {},
+          field_evidence: {},
+          warnings: ["Gemini mode requires a directly retrievable official page. No safe official page text was available for this record."],
+          source_urls: seedUrl ? [seedUrl] : [],
+        },
+        citationUrls: seedUrl ? [seedUrl] : [],
+        model,
+        usage: {},
+      };
+    }
+
+    const raw = await geminiGenerate({
+      model,
+      json: true,
+      system: "You are a conservative education data auditor. Official sources only. Return valid JSON only.",
+      prompt: `${prompt}\nGemini mode rule: use only the supplied official page text and known official URL. Do not claim any external research beyond that page.`,
+    });
+    return { parsed: await parseOrRepair(config, raw), citationUrls: [seedUrl], model, usage: {} };
+  }
+
+  const model = await resolveClaudeTextModel(config);
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -264,7 +295,7 @@ function buildVerifiedUpdate(entityType: string, row: Record<string, unknown>, r
   const cited = [...new Set(citationUrls.map(normalizeUrl).filter(Boolean))];
   const officialSources = cited.filter((url) => sameOfficialDomain(url, officialHost));
   const sources = [...new Set(officialSources)].slice(0, 30);
-  if (!sources.length) return { update: {}, sources: [], warnings: ["The proposed source was not present in Claude citations"] };
+  if (!sources.length) return { update: {}, sources: [], warnings: ["The proposed source was not present in the model citations"] };
 
   const allowed = new Set(ALLOWED_FIELDS[entityType] || []);
   const evidence = research.field_evidence && typeof research.field_evidence === "object" ? research.field_evidence : {};
@@ -295,9 +326,9 @@ async function processItem(admin: any, config: BlogAiConfig, item: any) {
     const { data: row, error } = await admin.from(table).select("*").eq("id", item.entity_id).maybeSingle();
     if (error) throw error;
     if (!row) return completeItem(admin, item, "skipped", { error_message: "Record no longer exists" });
-    const result = await researchWithClaude(config, item.entity_type, row);
+    const result = await researchWithAi(admin, config, item.entity_type, row);
     await logAiUsage(admin, {
-      provider: "anthropic", model: result.model, feature: "data-cleaner", operation: item.entity_type,
+      provider: String(result.model || "").startsWith("gemini") ? "gemini" : "anthropic", model: result.model, feature: "data-cleaner", operation: item.entity_type,
       inputTokens: result.usage?.input_tokens, outputTokens: result.usage?.output_tokens,
       requestId: item.id, metadata: { job_id: item.job_id, entity_id: item.entity_id },
     });

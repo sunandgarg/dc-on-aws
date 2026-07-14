@@ -200,6 +200,25 @@ export function OnlineEducationSection() {
                     </motion.div>
                   ))}
                 </div>
+                <div className="mb-5 rounded-2xl border border-primary/10 bg-primary/5 p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Popular study map</p>
+                    <span className="text-[10px] font-semibold text-muted-foreground">2026 intake focus</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: "STEM to USA", meta: "Fall - OPT ready" },
+                      { label: "MBA to UK", meta: "1-year format" },
+                      { label: "PG diploma Canada", meta: "High demand" },
+                      { label: "MS Germany", meta: "Public uni value" },
+                    ].map((item) => (
+                      <div key={item.label} className="rounded-xl bg-white px-3 py-2 shadow-sm ring-1 ring-primary/5">
+                        <p className="text-xs font-semibold text-foreground">{item.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{item.meta}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-2 mb-5">
                   {["SOP Review", "Visa Guidance", "IELTS Prep", "Scholarship Help"].map((s) => (
                     <span key={s} className="px-3 py-1.5 rounded-full bg-primary/10 text-xs font-medium text-primary">{s}</span>

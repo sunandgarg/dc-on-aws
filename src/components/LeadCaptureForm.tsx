@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import dcLogo from "@/assets/dc-lead-logo.png";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { getPrefillCookie, savePrefillCookie } from "@/components/CookieConsent";
-import { UrgencyHooks } from "@/components/UrgencyHooks";
+import { UrgencyHooks, UrgencyInlineNote } from "@/components/UrgencyHooks";
 import { markLeadSubmitted } from "@/lib/leadCapture";
 import { useInlineOtp, isValidIndianMobile, PHONE_HINT, sanitizeIndianMobile } from "@/components/LeadInlineOtp";
 import { ProgramModeToggle, type ProgramMode } from "@/components/ProgramModeToggle";
@@ -177,7 +177,7 @@ export function LeadCaptureForm({
     } else if (formData.name.trim().length < 2) {
       newErrors.name = "Name must be at least 2 characters";
     }
-    if (!simple && !formData.email.trim()) {
+    if (!formData.email.trim()) {
       newErrors.email = "Please enter your email";
     } else if (formData.email.trim() && !EMAIL_REGEX.test(formData.email.trim())) {
       newErrors.email = "Please enter a valid email address";
@@ -185,10 +185,10 @@ export function LeadCaptureForm({
     if (!formData.course?.trim()) {
       newErrors.course = "Please select an interested course";
     }
-    if (!simple && !formData.state?.trim()) {
+    if (!formData.state?.trim()) {
       newErrors.state = "Please select your state";
     }
-    if (!simple && !formData.city?.trim()) {
+    if (!formData.city?.trim()) {
       newErrors.city = "Please select your city";
     }
     if (Object.keys(newErrors).length > 0) {
@@ -273,6 +273,7 @@ export function LeadCaptureForm({
             </div>
           </div>
         </div>
+        <UrgencyInlineNote className="mb-3" />
 
         {!simple && <UrgencyHooks variant="full" className="mb-3" />}
 
@@ -365,15 +366,19 @@ export function LeadCaptureForm({
         <motion.div initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-slate-900 via-blue-950 to-primary p-5 text-white shadow-2xl md:p-7">
           <div className="mx-auto grid max-w-5xl items-center gap-6 lg:grid-cols-[.8fr_1.2fr]">
             <div>
-              <span className="inline-flex rounded-full bg-emerald-400/15 px-3 py-1 text-[11px] font-extrabold text-emerald-200 ring-1 ring-emerald-300/20">Built by IIT Delhi alumni to help</span>
+              <span className="inline-flex rounded-full bg-emerald-400/15 px-3 py-1 text-[11px] font-extrabold text-emerald-200 ring-1 ring-emerald-300/20">Personalised guidance with a fast shortlist</span>
               <h3 className="mt-3 text-2xl font-extrabold leading-tight md:text-3xl">Let an expert simplify your decision</h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-white/70">Share only the essentials. We will help you shortlist the right options and next steps.</p>
+              <UrgencyInlineNote className="mt-3 text-white/75" />
             </div>
             <form onSubmit={handleSubmit} className="grid gap-2.5 sm:grid-cols-2">
               <Input value={formData.name} onChange={e => update("name", e.target.value)} placeholder="Your name *" className="h-11 rounded-xl border-white/15 bg-white/10 text-white placeholder:text-white/55" required />
+              <Input value={formData.email} onChange={e => update("email", e.target.value)} placeholder="Email address *" type="email" className="h-11 rounded-xl border-white/15 bg-white/10 text-white placeholder:text-white/55" required />
               <div className="flex items-stretch gap-2"><Input value={formData.phone} onChange={e => update("phone", sanitizeIndianMobile(e.target.value))} placeholder="Mobile number *" type="tel" maxLength={15} className="h-11 flex-1 rounded-xl border-white/15 bg-white/10 text-white placeholder:text-white/55" required /><div className="[&_button]:!h-11 [&_button]:!bg-white [&_button]:!text-slate-900">{otp.getOtpButton}</div></div>
-              {otp.verifyBlock && <div className="rounded-xl bg-white p-2 text-slate-900 sm:col-span-2">{otp.verifyBlock}</div>}
               <select value={formData.course} onChange={e => update("course", e.target.value)} className="h-11 rounded-xl border border-white/15 bg-white/10 px-3 text-sm text-white outline-none [&>option]:text-slate-900" required><option value="">Course interest *</option>{courseOptions.map(c => <option key={c} value={c}>{c}</option>)}</select>
+              {otp.verifyBlock && <div className="rounded-xl bg-white p-2 text-slate-900 sm:col-span-2">{otp.verifyBlock}</div>}
+              <SearchableSelect options={locations?.states || []} value={formData.state} onChange={(v) => { update("state", v); update("city", ""); }} placeholder="State *" />
+              <SearchableSelect options={formData.state ? (locations?.citiesByState[formData.state] || []) : []} value={formData.city} onChange={(v) => update("city", v)} placeholder={formData.state ? "City *" : "Select state first"} />
               <Button type="submit" className="h-11 rounded-xl bg-white font-extrabold text-primary hover:bg-slate-100" disabled={isLoading || !authorized}>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Get free guidance →"}</Button>
               <label className="flex items-start gap-2 text-[10px] leading-4 text-white/65 sm:col-span-2"><input type="checkbox" checked={authorized} onChange={e => setAuthorized(e.target.checked)} className="mt-0.5 accent-primary" /><span>I agree to receive guidance by call, SMS or WhatsApp. <a href="/legal/privacy-policy" className="underline">Privacy</a></span></label>
             </form>

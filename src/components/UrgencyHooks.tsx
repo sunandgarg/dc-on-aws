@@ -117,6 +117,16 @@ export function UrgencyHooks({ variant = "full", className = "" }: UrgencyHooksP
   );
 }
 
+export function UrgencyInlineNote({ className = "" }: { className?: string }) {
+  const { label } = useCountdown(6);
+
+  return (
+    <p className={`text-[10.5px] font-medium text-muted-foreground ${className}`}>
+      Priority callback window closes in <span className="font-bold text-foreground tabular-nums">{label}</span>
+    </p>
+  );
+}
+
 /**
  * Top-of-page urgency strip - sits above the navbar to grab attention immediately.
  * Dismissible per-session.

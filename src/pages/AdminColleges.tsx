@@ -1,8 +1,8 @@
 import { PermGate } from "@/components/PermGate";
 import { AIGenerateDialog } from "@/components/admin/AIGenerateDialog";
-import { useMemo, useState } from "react";
+import { useDeferredValue, useState } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
-import { useAllDbColleges, useSaveCollege, useDeleteCollege, type DbCollege } from "@/hooks/useCollegesData";
+import { useAdminCollegeList, useAdminCollegeStats, useSaveCollege, useDeleteCollege, type DbCollege } from "@/hooks/useCollegesData";
 import { AdminFormSection } from "@/components/AdminFormSection";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { PageSummaryField } from "@/components/admin/PageSummaryField";
@@ -12,13 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Search, GraduationCap, Info, MapPin, FileText, Image, Award, Settings, BarChart, CheckCircle2, Eye, Layers, Sparkles, Youtube, Phone, UserCheck, DollarSign, HelpCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, GraduationCap, Info, MapPin, FileText, Image, Award, Settings, BarChart, CheckCircle2, Eye, Layers, Youtube, Phone, UserCheck, DollarSign, HelpCircle, ChevronLeft, ChevronRight, RefreshCw, Database, Activity, FilterX } from "lucide-react";
 import { toast } from "sonner";
 import { ImageHint } from "@/components/ImageHint";
 import { UploadOrUrlField, YouTubeField } from "@/components/UploadOrUrlField";
 import { AdminStatsBar, QuickFilterPills } from "@/components/AdminStats";
 import { CSVTools } from "@/components/CSVTools";
-import { RowDataIO } from "@/components/admin/RowDataIO";
 import { SlugScopedTableEditor } from "@/components/admin/SlugScopedTableEditor";
 import { CourseFeePicker } from "@/components/admin/CourseFeePicker";
 import { MultiCategoryPicker } from "@/components/admin/MultiCategoryPicker";
@@ -61,46 +60,51 @@ const emptyCollege: Partial<DbCollege> = {
 };
 
 export default function AdminColleges() {
-  const { data: colleges, isLoading } = useAllDbColleges();
   const saveCollege = useSaveCollege();
   const deleteCollege = useDeleteCollege();
   const { can, isAdmin } = useAuth();
   const canPublish = isAdmin || can("colleges", "publish") || can("colleges", "edit");
   const [editing, setEditing] = useDraftState<Partial<DbCollege> | null>('admin.colleges.editing.v1', null);
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState<"all" | "Published" | "Draft">("all");
-  const [visibleCount, setVisibleCount] = useState<number>(() => {
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [stateFilter, setStateFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
+  const [pageSize, setPageSizeState] = useState<number>(() => {
     const saved = parseInt(localStorage.getItem("admin_page_size_colleges") || "", 10);
-    return saved > 0 ? saved : 50;
+    return saved > 0 ? Math.min(saved, 100) : 50;
   });
   const setPageSize = (n: number) => {
-    setVisibleCount(n);
-    try { localStorage.setItem("admin_page_size_colleges", String(n)); } catch {}
+    const next = Math.max(10, Math.min(n, 100));
+    setPageSizeState(next);
+    setPage(1);
+    try { localStorage.setItem("admin_page_size_colleges", String(next)); } catch {}
+  };
+  const listQuery = useAdminCollegeList({ page, pageSize, search: deferredSearch, status: statusFilter, category: categoryFilter, state: stateFilter });
+  const statsQuery = useAdminCollegeStats();
+  const rows = listQuery.data?.rows ?? [];
+  const total = listQuery.data?.total ?? 0;
+  const stats = statsQuery.data ?? { total: 0, published: 0, draft: 0, active: 0, inactive: 0 };
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const hasFilters = Boolean(search || statusFilter !== "all" || categoryFilter || stateFilter);
+
+  const resetFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setCategoryFilter("");
+    setStateFilter("");
+    setPage(1);
   };
 
-  const stats = useMemo(() => {
-    const all = colleges ?? [];
-    const published = all.filter((c) => c.status === "Published").length;
-    const draft = all.filter((c) => c.status !== "Published").length;
-    const inactive = all.filter((c) => !c.is_active).length;
-    const cats = all.reduce<Record<string, number>>((m, c) => { m[c.category] = (m[c.category] || 0) + 1; return m; }, {});
-    const topCat = Object.entries(cats).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "-";
-    return { total: all.length, published, draft, inactive, topCat };
-  }, [colleges]);
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return (colleges ?? []).filter((c) => {
-      if (statusFilter !== "all" && c.status !== statusFilter) return false;
-      if (!q) return true;
-      return c.name.toLowerCase().includes(q)
-        || c.slug.toLowerCase().includes(q)
-        || (c.city || "").toLowerCase().includes(q)
-        || (c.state || "").toLowerCase().includes(q);
-    });
-  }, [colleges, search, statusFilter]);
-
-  const visible = filtered.slice(0, visibleCount);
+  const openEditor = async (id: string) => {
+    setLoadingEditId(id);
+    const { data, error } = await supabase.from("colleges").select("*").eq("id", id).single();
+    setLoadingEditId(null);
+    if (error) { toast.error(`Could not open college: ${error.message}`); return; }
+    setEditing(data as DbCollege);
+  };
 
   const handleSave = () => {
     if (!editing?.slug || !editing?.name) { toast.error("Slug and Name required"); return; }
@@ -158,110 +162,168 @@ export default function AdminColleges() {
 
   return (
     <AdminLayout title="Colleges Manager">
-      <div className="mb-3"><AIGenerateDialog entityType="colleges" table="colleges" /></div>
+      <div className="mb-5 overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-r from-primary/[0.08] via-background to-accent/[0.08] p-4 sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="mb-1 flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm"><Database className="h-4 w-4" /></span>
+              <div>
+                <h2 className="text-xl font-bold tracking-tight text-foreground">College content workspace</h2>
+                <p className="text-xs text-muted-foreground">Live database totals, focused editing and safe publishing in one place.</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <AIGenerateDialog entityType="colleges" table="colleges" />
+            <BulkEditToggle
+              table="colleges"
+              searchKeys={["name","slug","city","state"]}
+              columns={[
+                { key: "name", label: "Name", width: 220 },
+                { key: "slug", label: "Slug", width: 180 },
+                { key: "city", label: "City", width: 120 },
+                { key: "state", label: "State", width: 130 },
+                { key: "category", label: "Category", width: 120 },
+                { key: "type", label: "Type", type: "select", options: ["Government","Private","Deemed","Autonomous"], width: 110 },
+                { key: "priority", label: "Priority", type: "number", width: 90 },
+                { key: "rating", label: "Rating", type: "number", width: 80 },
+                { key: "status", label: "Status", type: "select", options: ["Draft","Published"], width: 110 },
+                { key: "is_active", label: "Active", type: "boolean", width: 80 },
+              ]}
+            />
+            <Button onClick={() => setEditing({ ...emptyCollege })} className="gap-2 rounded-xl shadow-sm">
+              <Plus className="h-4 w-4" /> Add College
+            </Button>
+          </div>
+        </div>
+      </div>
+
       <AdminStatsBar
         stats={[
-          { label: "Total", value: stats.total, icon: GraduationCap, tone: "primary" },
-          { label: "Published", value: stats.published, icon: CheckCircle2, tone: "success" },
-          { label: "Drafts", value: stats.draft, icon: Layers, tone: "warning" },
-          { label: "Inactive", value: stats.inactive, icon: Eye, tone: "muted" },
-          { label: "Top Category", value: stats.topCat, icon: Sparkles, tone: "primary" },
+          { label: "Total in database", value: statsQuery.isLoading ? "..." : stats.total.toLocaleString("en-IN"), icon: GraduationCap, tone: "primary", hint: "Exact Postgres count" },
+          { label: "Published", value: statsQuery.isLoading ? "..." : stats.published.toLocaleString("en-IN"), icon: CheckCircle2, tone: "success" },
+          { label: "Drafts", value: statsQuery.isLoading ? "..." : stats.draft.toLocaleString("en-IN"), icon: Layers, tone: "warning" },
+          { label: "Active", value: statsQuery.isLoading ? "..." : stats.active.toLocaleString("en-IN"), icon: Activity, tone: "success" },
+          { label: "Inactive", value: statsQuery.isLoading ? "..." : stats.inactive.toLocaleString("en-IN"), icon: Eye, tone: "muted" },
         ]}
       />
 
-      <div className="mb-3">
-        <CSVTools
-          table="colleges"
-          filename="colleges.csv"
-          columns="*"
-          typeHints={{ established: "number", rating: "number", reviews: "number", courses_count: "number", priority: "number", is_active: "boolean", tags: "array", facilities: "array", approvals: "array", top_recruiters: "array", carousel_images: "array", gallery_images: "array", highlights: "array" }}
-        />
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-3 mb-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => { setSearch(e.target.value); setVisibleCount(50); }} placeholder="Search by name, slug, city or state..." className="pl-10 rounded-xl h-10" />
+      <div className="mb-4 rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
+        <div className="grid gap-2 md:grid-cols-[minmax(260px,1fr)_180px_180px_auto]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search name, slug, city or state..." className="h-10 rounded-xl pl-10" />
+          </div>
+          <select value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }} className="h-10 rounded-xl border border-border bg-background px-3 text-sm">
+            <option value="">All categories</option>
+            {CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+          </select>
+          <select value={stateFilter} onChange={(e) => { setStateFilter(e.target.value); setPage(1); }} className="h-10 rounded-xl border border-border bg-background px-3 text-sm">
+            <option value="">All states</option>
+            {STATES.map((state) => <option key={state} value={state}>{state}</option>)}
+          </select>
+          <div className="flex gap-2">
+            {hasFilters && <Button variant="outline" size="sm" onClick={resetFilters} className="h-10 gap-1.5 rounded-xl"><FilterX className="h-4 w-4" /> Clear</Button>}
+            <Button variant="outline" size="icon" onClick={() => { listQuery.refetch(); statsQuery.refetch(); }} className="h-10 w-10 rounded-xl" aria-label="Refresh college data">
+              <RefreshCw className={`h-4 w-4 ${listQuery.isFetching || statsQuery.isFetching ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
         </div>
-        <Button onClick={() => setEditing({ ...emptyCollege })} className="rounded-xl gap-2">
-          <Plus className="w-4 h-4" /> Add College
-        </Button>
-        <BulkEditToggle
-          table="colleges"
-          searchKeys={["name","slug","city","state"]}
-          columns={[
-            { key: "name", label: "Name", width: 220 },
-            { key: "slug", label: "Slug", width: 180 },
-            { key: "city", label: "City", width: 120 },
-            { key: "state", label: "State", width: 130 },
-            { key: "category", label: "Category", width: 120 },
-            { key: "type", label: "Type", type: "select", options: ["Government","Private","Deemed","Autonomous"], width: 110 },
-            { key: "priority", label: "Priority", type: "number", width: 90 },
-            { key: "rating", label: "Rating", type: "number", width: 80 },
-            { key: "status", label: "Status", type: "select", options: ["Draft","Published"], width: 110 },
-            { key: "is_active", label: "Active", type: "boolean", width: 80 },
-          ]}
-        />
-      </div>
-
-      <QuickFilterPills
-        value={statusFilter}
-        onChange={(v) => { setStatusFilter(v); setVisibleCount(50); }}
-        options={[
-          { label: "All", value: "all", count: stats.total },
-          { label: "Published", value: "Published", count: stats.published },
-          { label: "Drafts", value: "Draft", count: stats.draft },
-        ]}
-      />
-
-      <FeaturedRankPanel table="colleges" detailPath={(slug) => `/colleges/${slug}`} />
-
-      {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading...</div>
-      ) : (
-        <div className="space-y-2">
-          <div className="flex justify-end">
+        <div className="mt-3 flex flex-col gap-2 border-t border-border/70 pt-3 sm:flex-row sm:items-center sm:justify-between">
+          <QuickFilterPills
+            value={statusFilter}
+            onChange={(value) => { setStatusFilter(value); setPage(1); }}
+            options={[
+              { label: "All", value: "all", count: stats.total },
+              { label: "Published", value: "Published", count: stats.published },
+              { label: "Drafts", value: "Draft", count: stats.draft },
+            ]}
+          />
+          <div className="flex flex-wrap justify-end gap-2">
             <AdminPageSizePicker
-              value={visibleCount}
+              value={pageSize}
               onChange={setPageSize}
-              totalLabel={`Showing ${Math.min(visible.length, filtered.length)} of ${filtered.length}`}
+              totalLabel={total ? `${((page - 1) * pageSize + 1).toLocaleString("en-IN")}-${Math.min(page * pageSize, total).toLocaleString("en-IN")} of ${total.toLocaleString("en-IN")}` : "0 records"}
             />
           </div>
-          {visible.map((c) => (
-            <div key={c.id} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
-              {c.image && <img src={c.image} alt={c.name} className="w-12 h-12 rounded-lg object-cover hidden sm:block" loading="lazy" />}
-              <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-foreground text-sm">{c.name}</span>
-                  <Badge variant="outline" className="text-[10px]">{c.category}</Badge>
-                  <Badge variant="outline" className="text-[10px]">{c.type}</Badge>
-                  <Badge variant={c.status === "Published" ? "default" : "secondary"} className="text-[10px]">{c.status}</Badge>
-                  {!c.is_active && <Badge variant="destructive" className="text-[10px]">Inactive</Badge>}
-                  <Badge variant="outline" className="text-[10px] bg-primary/5 border-primary/20 text-primary">⭐ P {(c as any).priority ?? 50}</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground truncate">{c.location} • {c.state} • {c.ranking}</p>
-              </div>
-              <div className="flex gap-1">
-                <OpenOnSiteButton href={`/colleges/${c.slug}`} />
-                <RowDataIO row={c} base="college" columns="*" />
-                <Button variant="ghost" size="icon" onClick={() => setEditing({ ...c })} className="w-8 h-8"><Pencil className="w-3.5 h-3.5" /></Button>
-                <PermGate module="colleges" action="delete"><Button variant="ghost" size="icon" onClick={() => { if (confirm("Delete?")) deleteCollege.mutate(c.id); }} className="w-8 h-8 text-destructive"><Trash2 className="w-3.5 h-3.5" /></Button></PermGate>
-              </div>
-            </div>
-          ))}
-          {filtered.length === 0 && <div className="text-center py-12 text-muted-foreground">No colleges found</div>}
-          {visible.length < filtered.length && (
-            <div className="flex justify-center pt-2">
-              <Button variant="outline" onClick={() => setVisibleCount((n) => n + visibleCount)} className="rounded-xl">
-                Load {visibleCount} more ({filtered.length - visible.length} left)
-              </Button>
-            </div>
-          )}
         </div>
-      )}
+      </div>
+
+      <details className="group mb-4 rounded-2xl border border-border bg-card">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-foreground">Advanced tools <span className="ml-1 text-xs font-normal text-muted-foreground">CSV import/export and featured placements</span></summary>
+        <div className="space-y-3 border-t border-border p-4">
+          <CSVTools
+            table="colleges"
+            filename="colleges.csv"
+            columns="*"
+            typeHints={{ established: "number", rating: "number", reviews: "number", courses_count: "number", priority: "number", is_active: "boolean", tags: "array", facilities: "array", approvals: "array", top_recruiters: "array", carousel_images: "array", gallery_images: "array", highlights: "array" }}
+          />
+          <FeaturedRankPanel table="colleges" detailPath={(slug) => `/colleges/${slug}`} />
+        </div>
+      </details>
+
+      <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-label="College records">
+        <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
+          <div>
+            <h3 className="text-sm font-bold text-foreground">College records</h3>
+            <p className="text-xs text-muted-foreground">Server-paginated directly from Supabase - no 1,000-row cap</p>
+          </div>
+          {listQuery.isFetching && <span className="inline-flex items-center gap-1.5 text-xs text-primary"><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Updating</span>}
+        </div>
+
+        {listQuery.isLoading ? (
+          <div className="flex items-center justify-center py-20 text-sm text-muted-foreground"><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Loading college records...</div>
+        ) : listQuery.isError ? (
+          <div className="px-4 py-16 text-center"><p className="font-semibold text-destructive">Could not load colleges</p><p className="mt-1 text-xs text-muted-foreground">{listQuery.error.message}</p><Button variant="outline" onClick={() => listQuery.refetch()} className="mt-4 rounded-xl">Try again</Button></div>
+        ) : rows.length === 0 ? (
+          <div className="px-4 py-16 text-center text-muted-foreground"><GraduationCap className="mx-auto mb-3 h-9 w-9 opacity-40" /><p className="font-medium">No colleges match these filters</p>{hasFilters && <Button variant="link" onClick={resetFilters}>Clear filters</Button>}</div>
+        ) : (
+          <div className="divide-y divide-border/70">
+            {rows.map((college) => {
+              const image = college.logo || college.image;
+              return (
+                <article key={college.id} className="group flex items-center gap-3 px-3 py-3 transition-colors hover:bg-muted/30 sm:gap-4 sm:px-4">
+                  <div className="hidden h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-border bg-muted sm:flex sm:items-center sm:justify-center">
+                    {image ? <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" /> : <GraduationCap className="h-5 w-5 text-muted-foreground" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <h4 className="max-w-full truncate text-sm font-semibold text-foreground" title={college.name}>{college.name}</h4>
+                      <Badge variant={college.status === "Published" ? "default" : "secondary"} className="h-5 px-1.5 text-[9px]">{college.status || "Draft"}</Badge>
+                      {!college.is_active && <Badge variant="destructive" className="h-5 px-1.5 text-[9px]">Inactive</Badge>}
+                      {college.is_partner && <Badge variant="outline" className="h-5 border-emerald-200 bg-emerald-50 px-1.5 text-[9px] text-emerald-700">Partner</Badge>}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{[college.city, college.state].filter(Boolean).join(", ") || "Location pending"}</span>
+                      <span>{college.category || "Uncategorised"}</span>
+                      <span>{college.type || "Type pending"}</span>
+                      <span>Priority {college.priority ?? 50}</span>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <OpenOnSiteButton href={`/colleges/${college.slug}`} />
+                    <Button variant="ghost" size="icon" disabled={loadingEditId === college.id} onClick={() => openEditor(college.id)} className="h-8 w-8" aria-label={`Edit ${college.name}`}>
+                      {loadingEditId === college.id ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Pencil className="h-3.5 w-3.5" />}
+                    </Button>
+                    <PermGate module="colleges" action="delete"><Button variant="ghost" size="icon" onClick={() => { if (confirm(`Delete ${college.name}? This cannot be undone.`)) deleteCollege.mutate(college.id); }} className="h-8 w-8 text-destructive" aria-label={`Delete ${college.name}`}><Trash2 className="h-3.5 w-3.5" /></Button></PermGate>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3 border-t border-border bg-muted/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-muted-foreground">Page <strong className="text-foreground">{page.toLocaleString("en-IN")}</strong> of <strong className="text-foreground">{totalPages.toLocaleString("en-IN")}</strong></p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1 || listQuery.isFetching} onClick={() => setPage((value) => Math.max(1, value - 1))} className="gap-1 rounded-xl"><ChevronLeft className="h-4 w-4" /> Previous</Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages || listQuery.isFetching} onClick={() => setPage((value) => Math.min(totalPages, value + 1))} className="gap-1 rounded-xl">Next <ChevronRight className="h-4 w-4" /></Button>
+          </div>
+        </div>
+      </section>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 justify-between">
               <span className="flex items-center gap-2"><GraduationCap className="w-5 h-5" /> {editing?.id ? "Edit" : "Add"} College</span>
@@ -683,7 +745,7 @@ export default function AdminColleges() {
                 <FaqInlineEditor page="colleges" itemSlug={editing.slug || ""} itemName={editing.name || ""} />
               </AdminFormSection>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="sticky bottom-0 z-20 -mx-1 flex justify-end gap-2 border-t border-border bg-background/95 px-1 py-3 backdrop-blur">
                 <Button variant="outline" onClick={() => setEditing(null)} className="rounded-xl">Cancel</Button>
                 <Button onClick={handleSave} disabled={saveCollege.isPending} className="rounded-xl">
                   {saveCollege.isPending ? "Saving..." : "Save College"}

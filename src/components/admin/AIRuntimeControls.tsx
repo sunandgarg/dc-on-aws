@@ -20,7 +20,7 @@ type Control = {
 
 const PROVIDERS: Record<string, string[]> = {
   counselor: ["gemini"],
-  "data-cleaner": ["anthropic"],
+  "data-cleaner": ["anthropic", "gemini"],
   "blog-studio": ["anthropic"],
   "blog-agent": ["anthropic"],
   "admin-ai-generate": ["anthropic", "gemini", "openai"],

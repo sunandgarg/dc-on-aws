@@ -488,7 +488,7 @@ export default function AdminOtpProviders() {
             <ul className="list-disc pl-4 text-muted-foreground space-y-0.5">
               <li>Add ANY SMS or WhatsApp OTP provider - Twilio, MSG91, Gupshup, Fast2SMS, Aquarite, custom REST API, etc.</li>
               <li>Enter credentials, then toggle active - first active provider per channel is used</li>
-              <li><b>Fast2SMS</b>: <code>provider_name=fast2sms</code>, API key = authorization key, Sender ID = DLT-approved header, Message ID = Fast2SMS DLT Manager message ID. Pipe-separated variables are auto-built as <code>{`{otp}|{expiry}`}</code>.</li>
+              <li><b>Fast2SMS</b>: <code>provider_name=fast2sms</code>, API key = authorization key. Preferred mode is Fast2SMS OTP route. Sender ID and template IDs are only needed if you intentionally switch to DLT or Quick route.</li>
               <li>For custom providers, set Base URL to your endpoint that accepts {`{phone, otp}`}</li>
             </ul>
           </div>
@@ -514,13 +514,13 @@ export default function AdminOtpProviders() {
                 )}
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                Implements Fast2SMS DLT SMS exactly as <code>POST https://www.fast2sms.com/dev/bulkV2</code> with <code>authorization</code>, <code>sender_id</code>, <code>message</code>, <code>variables_values</code>, <code>route=dlt</code>, and <code>numbers</code>.
+                Preferred path now uses Fast2SMS OTP delivery first. DLT and Quick SMS remain available only as explicit fallback modes if you intentionally enable them in provider config.
               </p>
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-4 text-xs">
                 <div className="rounded-xl border border-border bg-muted/30 p-3"><span className="text-muted-foreground">API Key</span><p className="font-medium text-foreground">Authorization header</p></div>
-                <div className="rounded-xl border border-border bg-muted/30 p-3"><span className="text-muted-foreground">Message ID</span><p className="font-medium text-foreground">DLT Manager</p></div>
+                <div className="rounded-xl border border-border bg-muted/30 p-3"><span className="text-muted-foreground">Default Mode</span><p className="font-medium text-foreground">OTP route</p></div>
                 <div className="rounded-xl border border-border bg-muted/30 p-3"><span className="text-muted-foreground">Default expiry</span><p className="font-medium text-foreground">10 minutes</p></div>
-                <div className="rounded-xl border border-border bg-muted/30 p-3"><span className="text-muted-foreground">Variables</span><p className="font-medium text-foreground">OTP|expiry</p></div>
+                <div className="rounded-xl border border-border bg-muted/30 p-3"><span className="text-muted-foreground">Fallback</span><p className="font-medium text-foreground">Quick / DLT optional</p></div>
               </div>
             </div>
           </div>

@@ -14,6 +14,7 @@ import { useInlineOtp, isValidIndianMobile, PHONE_HINT, sanitizeIndianMobile } f
 import { ProgramModeToggle, type ProgramMode } from "@/components/ProgramModeToggle";
 import { detectDeviceType, inferSourceCategory } from "@/lib/leadTracking";
 import { functionUrl } from "@/lib/backendMode";
+import { UrgencyInlineNote } from "@/components/UrgencyHooks";
 
 const LEAD_URL = functionUrl("save-lead");
 
@@ -91,8 +92,8 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.phone || !formData.course) {
-      toast.error("Please add your name, mobile number and course interest");
+    if (!formData.name || !formData.email || !formData.phone || !formData.course || !formData.state || !formData.city) {
+      toast.error("Please complete all required details");
       return;
     }
     if (!isValidIndianMobile(formData.phone)) {
@@ -146,7 +147,8 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-3">
-          <div className="rounded-2xl bg-emerald-50 px-3.5 py-2.5 text-xs font-semibold text-emerald-800 flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Built by IIT Delhi alumni to help</div>
+          <div className="rounded-2xl bg-emerald-50 px-3.5 py-2.5 text-xs font-semibold text-emerald-800 flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Personalised guidance with a clear shortlist and next steps</div>
+          <UrgencyInlineNote className="-mt-1" />
 
           {/* Name */}
           <div className="relative">
@@ -155,6 +157,18 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
               value={formData.name}
               onChange={(e) => update("name", e.target.value)}
               placeholder="Your Name *"
+              className="pl-10 rounded-xl h-10 text-sm"
+              required
+            />
+          </div>
+
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={formData.email}
+              onChange={(e) => update("email", e.target.value)}
+              placeholder="Email address *"
+              type="email"
               className="pl-10 rounded-xl h-10 text-sm"
               required
             />
@@ -210,19 +224,14 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
 
           <ProgramModeToggle value={programMode} onChange={setProgramMode} />
 
-          <details className="group rounded-2xl border border-border/70 bg-muted/25 px-3.5 py-2.5">
-            <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-bold text-foreground"><span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> Add location or email <span className="font-medium text-muted-foreground">(optional)</span></span><span className="text-primary group-open:rotate-45 transition">+</span></summary>
-            <div className="mt-3 space-y-2.5">
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input value={formData.email} onChange={(e) => update("email", e.target.value)} placeholder="Email address (optional)" type="email" className="pl-10 rounded-xl h-10 text-sm" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <SearchableSelect options={locations?.states || []} value={formData.state} onChange={(v) => { update("state", v); update("city", ""); }} placeholder="State" />
-                <SearchableSelect options={cities} value={formData.city} onChange={(v) => update("city", v)} placeholder={formData.state ? "City" : "Select state"} />
-              </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <SearchableSelect options={locations?.states || []} value={formData.state} onChange={(v) => { update("state", v); update("city", ""); }} placeholder="State *" />
             </div>
-          </details>
+            <div>
+              <SearchableSelect options={cities} value={formData.city} onChange={(v) => update("city", v)} placeholder={formData.state ? "City *" : "Select state first"} />
+            </div>
+          </div>
 
           {/* Authorization checkbox */}
           <label className="flex items-start gap-2 cursor-pointer">

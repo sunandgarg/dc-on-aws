@@ -141,6 +141,30 @@ export function useDbColleges() {
   });
 }
 
+export function useFeaturedCollegeCards(slugs: string[]) {
+  const orderedSlugs = slugs.filter(Boolean);
+
+  return useQuery({
+    queryKey: ["featured-college-cards", orderedSlugs],
+    queryFn: async () => {
+      if (!orderedSlugs.length) return [] as DbCollege[];
+      const { data, error } = await supabase
+        .from("colleges")
+        .select(PUBLIC_COLLEGE_CARD_SELECT)
+        .eq("is_active", true)
+        .in("slug", orderedSlugs);
+
+      if (error) throw error;
+
+      const rows = new Map<string, DbCollege>();
+      ((data ?? []) as unknown as DbCollege[]).forEach((row) => rows.set(row.slug, row));
+      return orderedSlugs.map((slug) => rows.get(slug)).filter(Boolean) as DbCollege[];
+    },
+    enabled: orderedSlugs.length > 0,
+    staleTime: 10 * 60_000,
+  });
+}
+
 /** Small, independent homepage query so category cards never depend on the
  * directory's first top-100 batch. */
 export function useHomepageCategoryColleges(category: string) {

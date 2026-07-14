@@ -237,7 +237,7 @@ export function MegaMenu() {
   };
 
   return (
-    <nav ref={ref} className="hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
+    <nav ref={ref} className="relative hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
       {sections.map((s) => {
         const Icon = iconFor(s.label);
         const active = open === s.label;
@@ -268,10 +268,10 @@ export function MegaMenu() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 6 }}
-                  className={`fixed left-1/2 top-[68px] z-50 grid max-h-[min(72vh,620px)] w-[min(94vw,1120px)] -translate-x-1/2 gap-5 overflow-y-auto rounded-[28px] border border-slate-200 bg-white/98 p-6 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] backdrop-blur-xl ${s.columns.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}
+                  className={`absolute left-1/2 top-full z-[80] mt-3 grid max-h-[min(72vh,620px)] w-[min(94vw,1120px)] -translate-x-1/2 gap-5 overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] ${s.columns.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}
                 >
                   {s.columns.map((col, i) => (
-                    <div key={i} className="min-w-0 rounded-2xl bg-slate-50/80 p-4 ring-1 ring-inset ring-slate-100">
+                    <div key={i} className="min-w-0 rounded-2xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-100">
                       <p className="mb-3 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.13em] text-primary"><span className="h-1.5 w-1.5 rounded-full bg-accent" />{col.title}</p>
                       <ul className="space-y-1">
                         {col.items.map((it) => (

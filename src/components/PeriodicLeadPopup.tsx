@@ -18,7 +18,7 @@ const LAST_LEAD_TS_KEY = "dc_last_lead_ts_v1";
 const COPY = {
   title: "🎓 Need help choosing the right college?",
   subtitle:
-    "Built by IIT Delhi Alumni, we'll guide you to the right college, course & scholarships - completely free.",
+    "Share a few details and get a personalised college, course and scholarship shortlist.",
   source: "periodic_popup",
 };
 

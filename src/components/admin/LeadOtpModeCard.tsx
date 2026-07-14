@@ -59,8 +59,8 @@ export function LeadOtpModeCard() {
 
   const toggleActive = useMutation({
     mutationFn: async ({ provider, is_active }: { provider: OtpProvider; is_active: boolean }) => {
-      if (is_active && provider.provider_name === "fast2sms" && (!provider.api_key || !provider.template_id)) {
-        throw new Error("Add Fast2SMS Authorization Key and otp_id Template ID before activating it.");
+      if (is_active && provider.provider_name === "fast2sms" && !provider.api_key) {
+        throw new Error("Add the Fast2SMS Authorization Key before activating it.");
       }
       if (is_active) {
         const { error: clearError } = await supabase.from("otp_providers").update({ is_active: false }).eq("channel", provider.channel);
@@ -425,4 +425,3 @@ function PerFormOverrides({ currentChannel }: { currentChannel: LeadChannelPrefe
     </div>
   );
 }
-

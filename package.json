@@ -16,7 +16,8 @@
     "import:legacy": "tsx scripts/import-legacy-directus.ts",
     "import:static": "tsx scripts/import-legacy-static.ts",
     "import:legacy-csv": "tsx scripts/import-legacy-csv.ts",
-    "migrate:legacy-assets": "tsx scripts/migrate-legacy-assets.ts"
+    "migrate:legacy-assets": "tsx scripts/migrate-legacy-assets.ts",
+    "backup:legacy-assets": "tsx scripts/backfill-legacy-asset-local-backups.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

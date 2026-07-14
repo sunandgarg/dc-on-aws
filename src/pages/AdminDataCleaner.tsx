@@ -175,7 +175,7 @@ export default function AdminDataCleaner() {
             <div className="max-w-3xl">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold"><ShieldCheck className="h-4 w-4" /> Official sources only</div>
               <h1 className="text-2xl font-black md:text-3xl">Clean, verify and modernise your content database</h1>
-              <p className="mt-2 text-sm leading-6 text-blue-100/80">Claude researches current first-party sources, validates every proposed field, repairs formats, and creates SEO/GEO/AEO-ready copy. Third-party college directories are blocked.</p>
+              <p className="mt-2 text-sm leading-6 text-blue-100/80">Use Claude for official-source web research or switch to Gemini for a cheaper direct-page cleaning pass. Third-party college directories are blocked either way.</p>
             </div>
             <Button onClick={start} disabled={action.isPending || !selectedTypes.length} size="lg" className="h-12 rounded-2xl bg-white text-slate-950 hover:bg-blue-50">
               {action.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DatabaseZap className="mr-2 h-4 w-4" />} Start cleaning
@@ -205,7 +205,7 @@ export default function AdminDataCleaner() {
                 <div className="rounded-2xl border p-3"><div className="flex items-center justify-between gap-3"><div><Label>Auto-apply verified changes</Label><p className="text-[11px] text-muted-foreground">Off keeps changes for review</p></div><Switch checked={autoApply} onCheckedChange={setAutoApply} /></div></div>
               </div>
               {autoApply && <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">Only changes with at least 95% evidence confidence and matching official-domain citations are applied. Uncertain facts stay unchanged and are highlighted in red. Identity, slugs, ratings, reviews and commercial priority fields remain protected.</div>}
-              <p className="text-xs text-muted-foreground">Cost guardrail: begin with 100 records in review mode. Each record can use up to five Claude web searches plus generation tokens, so processing all 13,000+ records is intentionally never started automatically.</p>
+              <p className="text-xs text-muted-foreground">Cost guardrail: begin with 100 records in review mode. Claude is best for web-researched official-source verification. Gemini is cheaper, but works best when a reliable official page is already present on the record.</p>
             </CardContent>
           </Card>
 

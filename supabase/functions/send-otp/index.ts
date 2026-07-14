@@ -434,9 +434,10 @@ async function sendViaFast2SMS(provider: OtpProvider, phone: string, otp?: strin
 
   // Default to Fast2SMS OTP route — works 24×7, no DLT/template, no 6pm cutoff.
   // Docs: https://docs.fast2sms.com/reference/send-otp
-  const route = String(provider.config_json?.fast2sms_route || provider.config_json?.route || "otp").toLowerCase();
+  const routeSetting = String(provider.config_json?.fast2sms_route || provider.config_json?.route || provider.config_json?.mode || "").toLowerCase();
+  const route = routeSetting || "otp";
 
-  if (route === "otp") {
+  if (route === "otp" || route === "smart_otp" || route === "send_otp" || route === "default") {
     const r = await sendViaFast2SMSOtpRoute(provider, mobile, otp || MASTER_TEST_OTP);
     if (r.ok) return r;
     // Optional fallback to DLT only when admin enables it
@@ -490,7 +491,9 @@ async function sendViaFast2SMSOtpRoute(provider: OtpProvider, mobile: string, ot
   const { apiKey } = fast2SmsConfig(provider);
   if (!apiKey) return { ok: false, detail: "Fast2SMS api_key (authorization) is not configured." };
   try {
-    const { res, text, parsed } = await callFast2SMS(provider, "/dev/bulkV2", {
+    const routeVariant = String(provider.config_json?.otp_route_variant || "bulkV2").toLowerCase();
+    const endpoint = routeVariant === "direct" ? "/dev/otp" : "/dev/bulkV2";
+    const { res, text, parsed } = await callFast2SMS(provider, endpoint, {
       route: "otp",
       variables_values: String(otp),
       numbers: mobile,
@@ -602,7 +605,9 @@ async function verifyViaFast2SMS(provider: OtpProvider, phone: string, otp: stri
   if (!/^[0-9]{10}$/.test(mobile) || !otp) return { ok: false, detail: "mobile and otp are required for Fast2SMS verification." };
 
   try {
-    const { res, text, parsed } = await callFast2SMS(provider, "/dev/otp/verify", { mobile, otp });
+    const verifyVariant = String(provider.config_json?.otp_verify_variant || "direct").toLowerCase();
+    const endpoint = verifyVariant === "bulkv2" ? "/dev/verify" : "/dev/otp/verify";
+    const { res, text, parsed } = await callFast2SMS(provider, endpoint, { mobile, otp });
     console.log("Fast2SMS verify response:", res.status, text.slice(0, 400));
     const ok = res.ok && parsed?.return === true;
     return { ok, verified: ok, detail: fast2SmsMessage(parsed, ok ? "OTP verified successfully" : `HTTP ${res.status}: ${text.slice(0, 200)}`), raw: parsed };
