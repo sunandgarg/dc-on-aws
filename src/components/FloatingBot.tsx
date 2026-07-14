@@ -66,7 +66,7 @@ export function FloatingBot() {
     setLeadData(data);
     setShowLeadForm(false);
     
-    const greeting = `Hi **${data.name}**! 👋\n\nHere's what I know about you:\n- **Course Interest:** ${data.course || "Not specified"}\n- **Location:** ${data.city ? `${data.city}, ${data.state}` : data.state || "India"}\n\nI'm ready to help you find the perfect college! Pick a question below or ask me anything! 🎓`;
+    const greeting = `Hi, I am **Thor**. Hi **${data.name}**! 👋\n\nHere's what I know about you:\n- **Course Interest:** ${data.course || "Not specified"}\n- **Location:** ${data.city ? `${data.city}, ${data.state}` : data.state || "India"}\n\nI'm ready to help you find the perfect college! Pick a question below or ask me anything! 🎓`;
     setMessages([{ role: "assistant", content: greeting }]);
 
     // If there was a pending query, process it
@@ -194,7 +194,7 @@ export function FloatingBot() {
             exit={{ scale: 0 }}
             onClick={handleOpen}
             className="fixed bottom-20 lg:bottom-6 right-4 md:right-6 z-50 flex flex-col items-center gap-1 rounded-2xl bg-transparent hover:scale-105 transition-transform active:scale-95"
-            aria-label="Ask iKi - AI education counselor"
+            aria-label="Ask Thor - AI education counselor"
           >
             <span className="relative h-14 w-14">
               <span className="flex h-14 w-14 overflow-hidden rounded-full bg-gradient-to-br from-primary to-blue-700 shadow-[0_12px_36px_-10px_rgba(37,99,235,.75)]">
@@ -202,7 +202,7 @@ export function FloatingBot() {
               </span>
               <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[9px] font-black text-accent-foreground">AI</span>
             </span>
-            <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-extrabold text-primary shadow-md ring-1 ring-slate-200">Ask iKi</span>
+            <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-extrabold text-primary shadow-md ring-1 ring-slate-200">Ask Thor</span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -230,7 +230,7 @@ export function FloatingBot() {
                   <img src={dcLogo} alt="DekhoCampus AI" className="w-7 h-7 object-contain" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm">iKi by DekhoCampus</h3>
+                  <h3 className="font-bold text-sm">Thor by DekhoCampus</h3>
                   <p className="text-xs opacity-80">Your 24/7 education guide</p>
                 </div>
               </div>

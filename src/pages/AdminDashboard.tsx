@@ -1,6 +1,7 @@
 import { AdminLayout } from "@/components/AdminLayout";
 import { AdminInsights } from "@/components/AdminInsights";
 import { LeadOtpModeCard } from "@/components/admin/LeadOtpModeCard";
+import { AIUsageDashboard } from "@/components/admin/AIUsageDashboard";
 import { useAllAds } from "@/hooks/useAds";
 import { useAllFeaturedColleges } from "@/hooks/useFeaturedColleges";
 import {
@@ -62,7 +63,7 @@ export default function AdminDashboard() {
     { title: "Articles & SEO", description: "Create and organise editorial content", href: "/admin/articles", icon: Newspaper, tone: "from-violet-500/15 to-violet-500/5 text-violet-700" },
     { title: "Website Experience", description: "Control homepage, banners and pages", href: "/admin/hero", icon: PanelTop, tone: "from-orange-500/15 to-orange-500/5 text-orange-700" },
     { title: "Revenue & Listings", description: "Ads, featured listings and priority", href: "/admin/ads", icon: Megaphone, tone: "from-rose-500/15 to-rose-500/5 text-rose-700" },
-    { title: "System & Providers", description: "OTP, AI, integrations and logs", href: "/admin/otp-providers", icon: Settings, tone: "from-slate-500/15 to-slate-500/5 text-slate-700" },
+    { title: "System & Providers", description: "AI budgets, models, OTP and integrations", href: "/admin/ai-providers", icon: Settings, tone: "from-slate-500/15 to-slate-500/5 text-slate-700" },
   ];
 
   return (
@@ -111,6 +112,8 @@ export default function AdminDashboard() {
             ))}
           </div>
         </section>
+
+        <AIUsageDashboard compact />
 
         <section aria-labelledby="workspaces-heading">
           <div className="mb-3">

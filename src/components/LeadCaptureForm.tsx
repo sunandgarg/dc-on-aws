@@ -365,7 +365,7 @@ export function LeadCaptureForm({
         <motion.div initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-slate-900 via-blue-950 to-primary p-5 text-white shadow-2xl md:p-7">
           <div className="mx-auto grid max-w-5xl items-center gap-6 lg:grid-cols-[.8fr_1.2fr]">
             <div>
-              <span className="inline-flex rounded-full bg-emerald-400/15 px-3 py-1 text-[11px] font-extrabold text-emerald-200 ring-1 ring-emerald-300/20">Free - private - no sales pressure</span>
+              <span className="inline-flex rounded-full bg-emerald-400/15 px-3 py-1 text-[11px] font-extrabold text-emerald-200 ring-1 ring-emerald-300/20">Built by IIT Delhi alumni to help</span>
               <h3 className="mt-3 text-2xl font-extrabold leading-tight md:text-3xl">Let an expert simplify your decision</h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-white/70">Share only the essentials. We will help you shortlist the right options and next steps.</p>
             </div>

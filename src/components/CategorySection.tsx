@@ -5,7 +5,7 @@ import { Star, MapPin, ArrowRight, Clock, Users, TrendingUp, GraduationCap, Book
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { useDbColleges } from "@/hooks/useCollegesData";
+import { useDbColleges, useHomepageCategoryColleges } from "@/hooks/useCollegesData";
 import { useDbCourses } from "@/hooks/useCoursesData";
 import { useDbExams } from "@/hooks/useExamsData";
 
@@ -18,6 +18,7 @@ export function CategorySection() {
   const categories = useMemo(() => dbCategories, [dbCategories]);
   const [activeCategory, setActiveCategory] = useState<string>(DEFAULT_CATEGORY);
   const { data: allColleges } = useDbColleges();
+  const { data: categoryColleges = [] } = useHomepageCategoryColleges(activeCategory);
   const { data: allCourses } = useDbCourses();
   const { data: allExams } = useDbExams();
   const isMobile = useIsMobile();
@@ -66,10 +67,10 @@ export function CategorySection() {
     return arr.some((c) => eqCat(c, cat));
   };
 
-  const colleges = useMemo(() => (allColleges || [])
+  const colleges = useMemo(() => (categoryColleges.length ? categoryColleges : (allColleges || []))
     .filter((c: any) => matchCat(c, activeCategory))
     .sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0))
-    .slice(0, 5), [allColleges, activeCategory]);
+    .slice(0, 5), [allColleges, categoryColleges, activeCategory]);
 
   const courses = useMemo(() => (allCourses || [])
     .filter((c: any) => matchCat(c, activeCategory))

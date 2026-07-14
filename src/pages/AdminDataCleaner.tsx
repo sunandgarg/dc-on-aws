@@ -11,7 +11,8 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Check, CirclePause, CirclePlay, Clock3, DatabaseZap, ExternalLink, Loader2, Search, ShieldCheck, Trash2, X } from "lucide-react";
+import { Check, CheckCheck, CirclePause, CirclePlay, Clock3, DatabaseZap, ExternalLink, Eye, Loader2, Search, ShieldCheck, Trash2, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const ENTITY_OPTIONS = [
   { id: "colleges", label: "Colleges", table: "colleges", name: "name" },
@@ -59,6 +60,7 @@ export default function AdminDataCleaner() {
   const [selectedJob, setSelectedJob] = useState<string>("");
   const [excludeType, setExcludeType] = useState("colleges");
   const [excludeSearch, setExcludeSearch] = useState("");
+  const [previewItem, setPreviewItem] = useState<any | null>(null);
 
   const counts = useQuery({
     queryKey: ["data-cleaner-counts"],
@@ -202,7 +204,7 @@ export default function AdminDataCleaner() {
                 <div><Label>Maximum records this run</Label><Input type="number" min={0} value={maxRecords} onChange={(e) => setMaxRecords(Math.max(0, Number(e.target.value) || 0))} /><p className="mt-1 text-[11px] text-muted-foreground">0 means all selected records</p></div>
                 <div className="rounded-2xl border p-3"><div className="flex items-center justify-between gap-3"><div><Label>Auto-apply verified changes</Label><p className="text-[11px] text-muted-foreground">Off keeps changes for review</p></div><Switch checked={autoApply} onCheckedChange={setAutoApply} /></div></div>
               </div>
-              {autoApply && <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">Only changes with at least 80% confidence and matching official-domain citations are applied. Identity, slugs, ratings, reviews and commercial priority fields remain protected. Official image, logo, gallery and document links can be proposed and remain fully visible in the audit.</div>}
+              {autoApply && <div className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">Only changes with at least 95% evidence confidence and matching official-domain citations are applied. Uncertain facts stay unchanged and are highlighted in red. Identity, slugs, ratings, reviews and commercial priority fields remain protected.</div>}
               <p className="text-xs text-muted-foreground">Cost guardrail: begin with 100 records in review mode. Each record can use up to five Claude web searches plus generation tokens, so processing all 13,000+ records is intentionally never started automatically.</p>
             </CardContent>
           </Card>
@@ -243,11 +245,11 @@ export default function AdminDataCleaner() {
             </div>
 
             <div className="space-y-3">
-              <div className="flex items-center justify-between"><h3 className="font-bold">Latest record results</h3><span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3 w-3" />Updates every 3 seconds</span></div>
+              <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-bold">Latest record results</h3><span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock3 className="h-3 w-3" />Updates every 3 seconds</span></div>{activeJob.review_items > 0 && <Button onClick={() => action.mutate({ action: "approve_all", job_id: activeJob.id })} disabled={action.isPending}><CheckCheck className="mr-2 h-4 w-4" />Approve all verified ({activeJob.review_items})</Button>}</div>
               {(items.data || []).map((item: any) => <div key={item.id} className="rounded-2xl border p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-bold">{item.entity_name}</p><Badge variant="outline">{item.entity_type}</Badge><Badge variant={item.status === 'updated' ? 'default' : 'secondary'}>{item.status}</Badge>{item.confidence != null && <span className="text-xs text-muted-foreground">{Math.round(Number(item.confidence)*100)}% confidence</span>}</div><p className="mt-1 text-xs text-muted-foreground">{item.changed_fields?.length ? `${item.changed_fields.length} fields: ${item.changed_fields.join(', ')}` : item.error_message || 'Researching official sources...'}</p>{item.official_url && <a href={item.official_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">Official source <ExternalLink className="h-3 w-3" /></a>}</div>
-                  {item.status === "review" && <div className="flex shrink-0 gap-2"><Button size="sm" onClick={() => action.mutate({ action: "approve", item_id: item.id })}><Check className="mr-1 h-3 w-3" />Approve</Button><Button size="sm" variant="outline" onClick={() => action.mutate({ action: "reject", item_id: item.id })}>Reject</Button></div>}
+                  <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="font-bold">{item.entity_name}</p><Badge variant="outline">{item.entity_type}</Badge><Badge variant={item.status === 'updated' ? 'default' : item.status === 'failed' || (item.status === 'skipped' && item.error_message) ? 'destructive' : 'secondary'}>{item.status}</Badge>{item.confidence != null && <span className={`text-xs font-semibold ${Number(item.confidence) < .95 ? 'text-red-600' : 'text-emerald-600'}`}>{Math.round(Number(item.confidence)*100)}% evidence confidence</span>}</div><p className={`mt-1 text-xs ${item.error_message ? 'text-red-600' : 'text-muted-foreground'}`}>{item.changed_fields?.length ? `${item.changed_fields.length} fields: ${item.changed_fields.join(', ')}` : item.error_message || 'Researching official sources...'}</p>{item.official_url && <a href={item.official_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">Official source <ExternalLink className="h-3 w-3" /></a>}</div>
+                  {item.status === "review" && <div className="flex shrink-0 flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setPreviewItem(item)}><Eye className="mr-1 h-3 w-3" />Page preview</Button><Button size="sm" onClick={() => action.mutate({ action: "approve", item_id: item.id })}><Check className="mr-1 h-3 w-3" />Approve</Button><Button size="sm" variant="outline" onClick={() => action.mutate({ action: "reject", item_id: item.id })}>Reject</Button></div>}
                 </div>
                 {item.status === "review" && item.proposed_data && <details className="mt-3 rounded-xl bg-muted/50 p-3"><summary className="cursor-pointer text-xs font-bold">Review proposed values</summary><pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap text-[11px]">{JSON.stringify(item.proposed_data, null, 2)}</pre></details>}
               </div>)}
@@ -256,6 +258,7 @@ export default function AdminDataCleaner() {
           </CardContent>
         </Card>}
       </div>
+      <Dialog open={!!previewItem} onOpenChange={(open) => !open && setPreviewItem(null)}><DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>Verified page preview - {previewItem?.entity_name}</DialogTitle></DialogHeader>{previewItem && <div className="space-y-5"><div className="overflow-hidden rounded-3xl border bg-background"><div className="relative h-52 bg-gradient-to-br from-blue-950 to-primary">{(previewItem.proposed_data?.image || previewItem.before_data?.image) && <img src={previewItem.proposed_data?.image || previewItem.before_data?.image} alt="" className="h-full w-full object-cover opacity-55" />}<div className="absolute inset-0 flex items-end p-6"><div><Badge className="mb-2 bg-emerald-600">Officially sourced</Badge><h2 className="text-3xl font-black text-white">{previewItem.proposed_data?.name || previewItem.proposed_data?.title || previewItem.entity_name}</h2><p className="text-blue-100">{[previewItem.proposed_data?.city, previewItem.proposed_data?.state].filter(Boolean).join(', ')}</p></div></div></div><div className="grid gap-4 p-6 md:grid-cols-2">{Object.entries(previewItem.proposed_data || {}).filter(([key]) => !['image','logo','carousel_images','gallery_images'].includes(key)).map(([key, value]) => <div key={key} className="rounded-2xl border p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{key.replace(/_/g, ' ')}</p><div className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap text-sm">{typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}</div></div>)}</div></div><div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-900"><strong>Evidence:</strong> {(previewItem.source_urls || []).map((url: string) => <a key={url} href={url} target="_blank" rel="noreferrer" className="ml-2 underline">{new URL(url).hostname}</a>)}</div></div>}</DialogContent></Dialog>
     </AdminLayout>
   );
 }

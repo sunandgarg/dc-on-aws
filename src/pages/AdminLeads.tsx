@@ -54,7 +54,7 @@ export default function AdminLeads() {
   const [customTo, setCustomTo] = useState<string>("");
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [pageSize, setPageSize] = useState<number>(50);
   const [page, setPage] = useState<number>(1);
   const [intentLead, setIntentLead] = useState<{ id: string; name?: string | null; phone?: string | null } | null>(null);
@@ -133,13 +133,15 @@ export default function AdminLeads() {
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ["admin-leads"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("leads")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(1000);
-      if (error) throw error;
-      return data ?? [];
+      const rows: any[] = [];
+      const batchSize = 1000;
+      for (let from = 0; ; from += batchSize) {
+        const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false }).range(from, from + batchSize - 1);
+        if (error) throw error;
+        rows.push(...(data || []));
+        if (!data || data.length < batchSize) break;
+      }
+      return rows;
     },
   });
 
@@ -150,11 +152,17 @@ export default function AdminLeads() {
   const categories = useMemo(() => Array.from(new Set(leads.map((l: any) => l.source_category).filter(Boolean))) as string[], [leads]);
 
   // Duplicate detection: count occurrences keyed by normalized phone (fallback email)
+  const isSilentLead = (l: any) => {
+    const value = `${l.source || ""} ${l.source_category || ""}`.toLowerCase();
+    return ["silent", "behavioral", "intent", "engagement"].some((part) => value.includes(part));
+  };
+  const indiaDay = (value: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
   const dupKey = (l: any) => {
     const p = (l.phone || "").replace(/\D/g, "").slice(-10);
-    if (p.length === 10) return `p:${p}`;
+    const day = isSilentLead(l) && l.created_at ? `:${indiaDay(l.created_at)}` : "";
+    if (p.length === 10) return `p:${p}${day}`;
     const e = (l.email || "").trim().toLowerCase();
-    return e ? `e:${e}` : "";
+    return e ? `e:${e}${day}` : "";
   };
   const dupCounts = useMemo(() => {
     const m = new Map<string, number>();
@@ -401,7 +409,7 @@ export default function AdminLeads() {
             className={`shrink-0 inline-flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm font-medium transition ${filtersOpen ? "bg-primary/10 text-primary border border-primary/30" : "text-primary hover:bg-primary/5 border border-transparent"}`}
           >
             <Filter className="w-3.5 h-3.5" />
-            Advanced Filter
+            Filters
             {activeAdvCount > 0 && (
               <span className="ml-1 px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">{activeAdvCount}</span>
             )}
@@ -679,9 +687,10 @@ export default function AdminLeads() {
                 const toggle = (k: string) => {
                   setExpanded((prev) => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
                 };
-                const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+                const effectivePageSize = pageSize === -1 ? Math.max(1, rows.length) : pageSize;
+                const totalPages = Math.max(1, Math.ceil(rows.length / effectivePageSize));
                 const safePage = Math.min(page, totalPages);
-                const visibleRows = rows.slice((safePage - 1) * pageSize, safePage * pageSize);
+                const visibleRows = rows.slice((safePage - 1) * effectivePageSize, safePage * effectivePageSize);
                 const visibleIds = visibleRows.map((r) => r.primary.id);
                 const allOnPageSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
                 const toggleAllOnPage = () => {
@@ -801,10 +810,11 @@ export default function AdminLeads() {
 
           {/* Bottom bar - true pagination */}
           {(() => {
-            const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+            const effectivePageSize = pageSize === -1 ? Math.max(1, filtered.length) : pageSize;
+            const totalPages = Math.max(1, Math.ceil(filtered.length / effectivePageSize));
             const safePage = Math.min(page, totalPages);
-            const start = filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
-            const end = Math.min(safePage * pageSize, filtered.length);
+            const start = filtered.length === 0 ? 0 : (safePage - 1) * effectivePageSize + 1;
+            const end = Math.min(safePage * effectivePageSize, filtered.length);
             return (
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-border bg-muted/30">
                 <div className="text-xs text-muted-foreground">
@@ -822,9 +832,11 @@ export default function AdminLeads() {
             <div className="flex items-center gap-2 ml-auto">
               <span className="text-xs text-muted-foreground">Show Rows</span>
               <Select
-                value={[10, 20, 50, 100].includes(pageSize) ? String(pageSize) : "custom"}
+                value={pageSize === -1 ? "all" : [10, 20, 50, 100].includes(pageSize) ? String(pageSize) : "custom"}
                 onValueChange={(v) => {
-                  if (v === "custom") {
+                  if (v === "all") {
+                    setPageSize(-1); setCustomSize(""); setPage(1);
+                  } else if (v === "custom") {
                     setCustomSize(String(pageSize));
                   } else {
                     setPageSize(Number(v));
@@ -839,9 +851,10 @@ export default function AdminLeads() {
                   <SelectItem value="50">50</SelectItem>
                   <SelectItem value="100">100</SelectItem>
                   <SelectItem value="custom">Custom…</SelectItem>
+                  <SelectItem value="all">All rows</SelectItem>
                 </SelectContent>
               </Select>
-              {![10, 20, 50, 100].includes(pageSize) || customSize !== "" ? (
+              {pageSize !== -1 && (![10, 20, 50, 100].includes(pageSize) || customSize !== "") ? (
                 <Input
                   type="number"
                   min={1}

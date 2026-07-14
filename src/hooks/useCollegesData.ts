@@ -141,6 +141,24 @@ export function useDbColleges() {
   });
 }
 
+/** Small, independent homepage query so category cards never depend on the
+ * directory's first top-100 batch. */
+export function useHomepageCategoryColleges(category: string) {
+  return useQuery({
+    queryKey: ["homepage-category-colleges", category],
+    queryFn: async () => {
+      const base = () => supabase.from("colleges").select(PUBLIC_COLLEGE_CARD_SELECT).eq("is_active", true).order("priority", { ascending: true, nullsFirst: false }).order("rating", { ascending: false, nullsFirst: false }).limit(8);
+      const [primary, additional] = await Promise.all([base().ilike("category", category), base().contains("categories", [category])]);
+      if (primary.error) throw primary.error;
+      if (additional.error && !String(additional.error.message).includes("categories")) throw additional.error;
+      const unique = new Map<string, DbCollege>();
+      [...(primary.data || []), ...(additional.data || [])].forEach((row: any) => unique.set(row.id, row));
+      return [...unique.values()].slice(0, 5);
+    },
+    staleTime: 10 * 60_000,
+  });
+}
+
 export function useAllDbColleges() {
   return useQuery({
     queryKey: ["db-colleges-all"],

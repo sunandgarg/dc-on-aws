@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { generateBlogJson, loadBlogAiConfig, resolveClaudeTextModel, type BlogAiConfig } from "../_shared/blog-ai.ts";
+import { logAiUsage } from "../_shared/ai-usage.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -25,7 +26,7 @@ const ALLOWED_FIELDS: Record<string, string[]> = {
     "official_website", "name", "short_name", "description", "page_summary", "established", "type", "category",
     "categories", "city", "state", "location", "fees", "admission_process", "eligibility_criteria", "cutoff",
     "admission_deadline", "scholarship_available", "scholarship_details", "placement", "placement_content",
-    "rankings_content", "facilities", "facilities_content", "highlights", "approvals", "affiliation_kind",
+    "rankings_content", "facilities", "facilities_content", "highlights", "approvals", "affiliation_kind", "parent_university_slug",
     "naac_grade", "top_recruiters", "hostel_life", "course_fee_content", "meta_title", "meta_description", "meta_keywords",
     "image", "logo", "carousel_images", "gallery_images", "brochure_url", "approval_logos", "banner_ad_image", "square_ad_image",
   ],
@@ -223,11 +224,11 @@ Every updated factual field must have field_evidence. If no official source can 
   if (!response.ok) {
     if (!seedUrl || !directText || !pageMatchesEntity(directText, name)) throw new Error(`Claude official-source research failed (${response.status}): ${(await response.text()).slice(0, 350)}`);
     const raw = await generateBlogJson(config, `${prompt}\nWeb search is unavailable. Use only the supplied official page text and known official URL.`);
-    return { parsed: await parseOrRepair(config, raw), citationUrls: [seedUrl], model };
+    return { parsed: await parseOrRepair(config, raw), citationUrls: [seedUrl], model, usage: {} };
   }
   const payload = await response.json();
   const raw = (payload.content || []).filter((block: any) => block.type === "text").map((block: any) => block.text || "").join("");
-  return { parsed: await parseOrRepair(config, raw), citationUrls: [...collectCitationUrls(payload)], model };
+  return { parsed: await parseOrRepair(config, raw), citationUrls: [...collectCitationUrls(payload)], model, usage: payload.usage || {} };
 }
 
 function cleanString(value: unknown, max = 100_000) {
@@ -293,14 +294,19 @@ async function processItem(admin: any, config: BlogAiConfig, item: any) {
     if (error) throw error;
     if (!row) return completeItem(admin, item, "skipped", { error_message: "Record no longer exists" });
     const result = await researchWithClaude(config, item.entity_type, row);
+    await logAiUsage(admin, {
+      provider: "anthropic", model: result.model, feature: "data-cleaner", operation: item.entity_type,
+      inputTokens: result.usage?.input_tokens, outputTokens: result.usage?.output_tokens,
+      requestId: item.id, metadata: { job_id: item.job_id, entity_id: item.entity_id },
+    });
     const confidence = Math.max(0, Math.min(1, Number(result.parsed.confidence || 0)));
     const verified = buildVerifiedUpdate(item.entity_type, row, result.parsed, result.citationUrls);
     const changedFields = Object.keys(verified.update).filter((field) => JSON.stringify(row[field]) !== JSON.stringify(verified.update[field]));
-    if (confidence < 0.8 || !verified.sources.length || !changedFields.length) {
+    if (confidence < 0.95 || !verified.sources.length || !changedFields.length) {
       return completeItem(admin, item, "skipped", {
         official_url: normalizeUrl(result.parsed.official_url), source_urls: verified.sources, confidence,
         before_data: compactExisting(row, item.entity_type), proposed_data: verified.update, changed_fields: changedFields,
-        warnings: verified.warnings, error_message: confidence < 0.8 ? "Official-source confidence below 80%" : "No verified changes found",
+        warnings: verified.warnings, error_message: confidence < 0.95 ? "Not enough official evidence - left unchanged" : "No verified changes found",
       });
     }
 
@@ -398,6 +404,23 @@ Deno.serve(async (req) => {
       if (applyError) throw applyError;
       await completeItem(admin, item, "updated", { error_message: null });
       return json({ success: true });
+    }
+    if (action === "approve_all") {
+      const { data: reviewItems, error } = await admin.from("data_cleaning_items").select("*").eq("job_id", body.job_id).eq("status", "review").gte("confidence", 0.95).limit(5000);
+      if (error) throw error;
+      let approved = 0;
+      const failures: string[] = [];
+      for (const item of reviewItems || []) {
+        try {
+          const table = TABLES[item.entity_type];
+          if (!table || !item.source_urls?.length) continue;
+          const update = { ...(item.proposed_data || {}), data_verified_at: new Date().toISOString(), data_source_urls: item.source_urls, data_quality_score: Math.round(Number(item.confidence || 0) * 100), updated_at: new Date().toISOString() };
+          const { error: applyError } = await admin.from(table).update(update).eq("id", item.entity_id);
+          if (applyError) throw applyError;
+          await completeItem(admin, item, "updated", { error_message: null }); approved += 1;
+        } catch (applyError) { failures.push(`${item.entity_name}: ${applyError instanceof Error ? applyError.message : String(applyError)}`); }
+      }
+      return json({ success: failures.length === 0, approved, failures: failures.slice(0, 20) });
     }
     return json({ error: "Unknown action" }, 400);
   } catch (error) {

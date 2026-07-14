@@ -136,7 +136,7 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
           <div className="flex items-center gap-3">
             <img src={dcLogo} alt="DekhoCampus" className="w-10 h-10 object-contain rounded-full bg-primary-foreground/20 p-1" />
             <div>
-              <h3 className="font-bold text-primary-foreground">Start with iKi</h3>
+              <h3 className="font-bold text-primary-foreground">Start with Thor</h3>
               <p className="text-[11px] text-primary-foreground/90">Three quick details for personalised guidance</p>
             </div>
           </div>
@@ -146,7 +146,7 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-3">
-          <div className="rounded-2xl bg-emerald-50 px-3.5 py-2.5 text-xs font-semibold text-emerald-800 flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Free guidance - no sales pressure</div>
+          <div className="rounded-2xl bg-emerald-50 px-3.5 py-2.5 text-xs font-semibold text-emerald-800 flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Built by IIT Delhi alumni to help</div>
 
           {/* Name */}
           <div className="relative">
@@ -234,7 +234,7 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
 
           <Button type="submit" className="w-full bg-primary hover:bg-primary/90 rounded-xl h-11 text-sm" disabled={isLoading || !authorized}>
             {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-            {isLoading ? "Saving..." : "Continue with iKi"}
+            {isLoading ? "Saving..." : "Continue with Thor"}
           </Button>
           <p className="text-[10px] text-center text-muted-foreground">
             Your details stay secure. No spam, ever.

@@ -12,6 +12,14 @@ import { Badge } from "@/components/ui/badge";
 
 import { CSVTools } from "@/components/CSVTools";
 import { BlogAISettingsCard } from "@/components/admin/BlogAISettingsCard";
+import { AIUsageDashboard } from "@/components/admin/AIUsageDashboard";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const MODEL_CATALOG: Record<string, string[]> = {
+  anthropic: ["claude-3-5-sonnet-latest", "claude-sonnet-4-20250514", "claude-opus-4-20250514", "claude-3-5-haiku-latest"],
+  gemini: ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"],
+  openai: ["gpt-5", "gpt-4.1", "gpt-4.1-mini", "gpt-4o-mini"],
+};
 /**
  * AdminAIProviders - Manage AI Provider API Keys
  * 
@@ -153,6 +161,7 @@ export default function AdminAIProviders() {
 
   return (
     <AdminLayout title="AI Providers">
+      <div className="mb-6"><AIUsageDashboard /></div>
       <BlogAISettingsCard />
       <div className="mb-4">
         <CSVTools table="ai_providers" filename="ai_providers.csv" columns="*" upsertKey="id" />
@@ -294,15 +303,7 @@ export default function AdminAIProviders() {
               <div className="grid grid-cols-2 gap-2 mt-3">
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Default Model</label>
-                  <Input
-                    defaultValue={provider.default_model}
-                    onBlur={(e) => {
-                      if (e.target.value !== provider.default_model) {
-                        updateMutation.mutate({ id: provider.id, updates: { default_model: e.target.value } });
-                      }
-                    }}
-                    className="rounded-xl h-8 text-xs mt-0.5"
-                  />
+                  {MODEL_CATALOG[provider.provider_name] ? <Select value={provider.default_model} onValueChange={(default_model) => updateMutation.mutate({ id: provider.id, updates: { default_model } })}><SelectTrigger className="mt-0.5 h-8 rounded-xl text-xs"><SelectValue /></SelectTrigger><SelectContent>{MODEL_CATALOG[provider.provider_name].map((model) => <SelectItem key={model} value={model}>{model}</SelectItem>)}</SelectContent></Select> : <Input defaultValue={provider.default_model} onBlur={(e) => { if (e.target.value !== provider.default_model) updateMutation.mutate({ id: provider.id, updates: { default_model: e.target.value } }); }} className="rounded-xl h-8 text-xs mt-0.5" />}
                 </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground uppercase tracking-wide">Base URL</label>

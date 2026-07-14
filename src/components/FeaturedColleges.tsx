@@ -9,13 +9,26 @@ import { DynamicAdBanner } from "@/components/DynamicAdBanner";
 import { useDbColleges } from "@/hooks/useCollegesData";
 import { useFeaturedColleges } from "@/hooks/useFeaturedColleges";
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export function FeaturedColleges() {
   const { data: dbColleges } = useDbColleges();
   const { data: featuredSlugs } = useFeaturedColleges();
+  const { data: featuredRows = [] } = useQuery({
+    queryKey: ["homepage-featured-college-cards", featuredSlugs],
+    enabled: !!featuredSlugs?.length,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("colleges").select("id,slug,name,short_name,location,city,state,type,category,rating,reviews,fees,image,logo,tags,established,approvals,naac_grade,is_active,status,priority,featured_rank").in("slug", featuredSlugs!).eq("is_active", true);
+      if (error) throw error;
+      const order = new Map(featuredSlugs!.map((slug, index) => [slug, index]));
+      return (data || []).sort((a: any, b: any) => (order.get(a.slug) || 0) - (order.get(b.slug) || 0));
+    },
+    staleTime: 10 * 60_000,
+  });
 
   const topColleges = useMemo(() => {
-    const allColleges = dbColleges ?? [];
+    const allColleges = [...featuredRows, ...(dbColleges ?? [])];
     const slugs = featuredSlugs ?? [];
     if (slugs.length > 0) {
       const slugSet = new Set(slugs);
@@ -24,7 +37,7 @@ export function FeaturedColleges() {
     }
     // Fallback: show top rated
     return allColleges.slice(0, 6);
-  }, [dbColleges, featuredSlugs]);
+  }, [dbColleges, featuredRows, featuredSlugs]);
 
   return (
     <section className="py-10 md:py-16 bg-background" aria-labelledby="featured-heading">
