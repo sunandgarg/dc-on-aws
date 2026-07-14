@@ -220,7 +220,7 @@ export function OnlineEducationSection() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 mb-5">
-                  {["SOP Review", "Visa Guidance", "IELTS Prep", "Scholarship Help"].map((s) => (
+                  {["IELTS Prep", "Scholarship Help"].map((s) => (
                     <span key={s} className="px-3 py-1.5 rounded-full bg-primary/10 text-xs font-medium text-primary">{s}</span>
                   ))}
                 </div>

@@ -1,4 +1,5 @@
 import { logAiUsage } from "./ai-usage.ts";
+import { geminiGenerate, GEMINI_MODEL } from "./gemini.ts";
 const encoder = new TextEncoder();
 
 export type BlogAiConfig = {
@@ -25,6 +26,18 @@ function normalizeClaudeTextModel(value: string | null | undefined) {
 }
 
 const resolvedClaudeModels = new Map<string, string>();
+
+function inferTextProvider(model: string | null | undefined): "anthropic" | "gemini" | "openai" {
+  const value = String(model || "").trim().toLowerCase();
+  if (value.startsWith("gemini")) return "gemini";
+  if (value.startsWith("gpt") || value.startsWith("o")) return "openai";
+  return "anthropic";
+}
+
+export function blogTextProviderLabel(model: string | null | undefined) {
+  return inferTextProvider(model);
+}
+
 
 export async function resolveClaudeTextModel(config: BlogAiConfig) {
   if (resolvedClaudeModels.has(config.textModel)) return resolvedClaudeModels.get(config.textModel)!;
@@ -80,13 +93,48 @@ export async function loadBlogAiConfig(admin: any, serviceRoleKey: string): Prom
   return {
     claudeKey: await decryptBlogSecret(data?.claude_api_key_ciphertext || "", serviceRoleKey),
     openaiKey: await decryptBlogSecret(data?.openai_api_key_ciphertext || "", serviceRoleKey),
-    textModel: normalizeClaudeTextModel(data?.text_model),
+    textModel: inferTextProvider(data?.text_model) === "anthropic" ? normalizeClaudeTextModel(data?.text_model) : String(data?.text_model || GEMINI_MODEL),
     imageModel: ["gpt-image-2", ""].includes(String(data?.image_model || "")) ? DEFAULT_OPENAI_IMAGE_MODEL : data.image_model,
     imageQuality: data?.image_quality || "medium",
   };
 }
 
 export async function generateBlogJson(config: BlogAiConfig, prompt: string, telemetry?: { admin: any; feature: string; operation?: string; userId?: string | null }) {
+  const provider = inferTextProvider(config.textModel);
+
+  if (provider === "gemini") {
+    const model = config.textModel || GEMINI_MODEL;
+    const text = await geminiGenerate({
+      model,
+      json: true,
+      system: "Return valid JSON only. Never use an em dash. Use a normal hyphen when punctuation is needed.",
+      prompt,
+    });
+    if (telemetry?.admin) await logAiUsage(telemetry.admin, { provider: "gemini", model, feature: telemetry.feature, operation: telemetry.operation || "text-generation", userId: telemetry.userId });
+    return text || "{}";
+  }
+
+  if (provider === "openai") {
+    if (!config.openaiKey) throw new Error("OpenAI API key is not configured in Admin - AI Providers");
+    const model = config.textModel || "gpt-5";
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${config.openaiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: "Return valid JSON only. Never use an em dash. Use a normal hyphen when punctuation is needed." },
+          { role: "user", content: prompt },
+        ],
+      }),
+    });
+    if (!response.ok) throw new Error(`OpenAI blog generation failed (${response.status}): ${(await response.text()).slice(0, 500)}`);
+    const data = await response.json();
+    if (telemetry?.admin) await logAiUsage(telemetry.admin, { provider: "openai", model, feature: telemetry.feature, operation: telemetry.operation || "text-generation", inputTokens: data.usage?.prompt_tokens, outputTokens: data.usage?.completion_tokens, userId: telemetry.userId });
+    return data.choices?.[0]?.message?.content || "{}";
+  }
+
   if (!config.claudeKey) throw new Error("Claude blog API key is not configured in Admin - AI Providers");
   const model = await resolveClaudeTextModel(config);
   const response = await fetch("https://api.anthropic.com/v1/messages", {

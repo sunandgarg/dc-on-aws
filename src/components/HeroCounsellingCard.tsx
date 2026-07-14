@@ -120,7 +120,7 @@ export function HeroCounsellingCard({ onStart }: HeroCounsellingCardProps) {
                 <span key={letter} className={`flex h-5 w-5 items-center justify-center rounded-full border-2 border-white text-[8px] font-bold text-white ${index === 0 ? "bg-primary" : index === 1 ? "bg-accent" : "bg-emerald-500"}`}>{letter}</span>
               ))}
             </span>
-            Trusted by students and parents across India
+            Trained system with IIT Delhi alumni guidance
           </div>
         </div>
       </div>

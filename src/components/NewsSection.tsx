@@ -136,8 +136,7 @@ export function NewsSection() {
           </div>
 
           <div className="space-y-6">
-            <LeadCaptureForm variant="sidebar" title="Get Exam Alerts" subtitle="Never miss important dates" source="news_sidebar" />
-            <DynamicAdBanner variant="square" position="sidebar" className="hidden lg:flex" />
+            <LeadCaptureForm variant="sidebar" title="Get Exam Alerts" subtitle="" source="news_sidebar" />
           </div>
         </div>
         )}

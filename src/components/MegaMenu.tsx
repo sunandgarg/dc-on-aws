@@ -236,6 +236,13 @@ export function MegaMenu() {
     return Sparkles;
   };
 
+  const dropdownAlignment = (label: string) => {
+    if (label === "Colleges" || label === "Courses" || label === "Exams") {
+      return "left-0 translate-x-0 origin-top-left";
+    }
+    return "right-0 translate-x-0 origin-top-right";
+  };
+
   return (
     <nav ref={ref} className="relative hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
       {sections.map((s) => {
@@ -268,7 +275,7 @@ export function MegaMenu() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 6 }}
-                  className={`absolute left-1/2 top-full z-[80] mt-3 grid max-h-[min(72vh,620px)] w-[min(94vw,1120px)] -translate-x-1/2 gap-5 overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] ${s.columns.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}
+                  className={`absolute top-full z-[80] mt-3 grid max-h-[min(72vh,620px)] max-w-[calc(100vw-3rem)] gap-5 overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] xl:p-6 ${dropdownAlignment(s.label)} ${s.columns.length === 4 ? "w-[min(94vw,1080px)] grid-cols-4" : "w-[min(90vw,900px)] grid-cols-3"}`}
                 >
                   {s.columns.map((col, i) => (
                     <div key={i} className="min-w-0 rounded-2xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-100">
@@ -288,7 +295,7 @@ export function MegaMenu() {
                       </ul>
                     </div>
                   ))}
-                  <div className="col-span-full flex items-center justify-between border-t border-slate-100 pt-4">
+                  <div className="col-span-full flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
                     <div><p className="text-sm font-extrabold text-slate-900">Explore with confidence</p><p className="text-xs text-slate-500">Verified colleges, courses, exams and decision tools in one place.</p></div>
                     {s.href && <Link to={s.href} onClick={() => setOpen(null)} className="rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground shadow-lg shadow-primary/20">View all {s.label} →</Link>}
                   </div>

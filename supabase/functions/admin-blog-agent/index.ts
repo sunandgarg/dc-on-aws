@@ -1,8 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { geminiGenerate, GEMINI_MODEL } from "./gemini.ts";
-import { generateAndUploadBlogCover, generateBlogJson, loadBlogAiConfig } from "../_shared/blog-ai.ts";
-import { applyClaudeRuntimeControl, applyImageRuntimeControl, getAiRuntimeControl } from "../_shared/ai-control.ts";
+import { blogTextProviderLabel, generateAndUploadBlogCover, generateBlogJson, loadBlogAiConfig } from "../_shared/blog-ai.ts";
+import { applyBlogTextRuntimeControl, applyImageRuntimeControl, getAiRuntimeControl } from "../_shared/ai-control.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
       ...(body.override || {}),
     };
     const blogAi = await loadBlogAiConfig(admin, service);
-    await applyClaudeRuntimeControl(admin, "blog-agent", blogAi);
+    await applyBlogTextRuntimeControl(admin, "blog-agent", blogAi);
     const selectedAuthorIds = Array.isArray(settings.author_ids) ? settings.author_ids.filter(Boolean) : [];
     const { data: selectedAuthorRows } = selectedAuthorIds.length
       ? await admin.from("authors").select("id,name").eq("is_active", true).in("id", selectedAuthorIds)
@@ -325,7 +325,7 @@ Deno.serve(async (req) => {
       sources: signals.map(({ signal, ...rest }) => rest),
       selected_topics: topics,
       created_article_ids: createdIds,
-      message: `Created ${createdIds.length} article(s) using anthropic:${blogAi.textModel} and openai:${blogAi.imageModel}`,
+      message: `Created ${createdIds.length} article(s) using ${blogTextProviderLabel(blogAi.textModel)}:${blogAi.textModel} and openai:${blogAi.imageModel}`,
     }).eq("id", runId);
 
     return json({ success: true, created_article_ids: createdIds, topics, next_run_at: nextRun });

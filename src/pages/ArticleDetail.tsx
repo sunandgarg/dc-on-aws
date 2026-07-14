@@ -330,19 +330,31 @@ export default function ArticleDetail() {
             <article className="lg:col-span-8 min-w-0">
               <PageBreadcrumb items={[{ label: "News", href: "/news" }, { label: article.category, href: `/news?category=${encodeURIComponent(article.category)}` }, { label: article.title }]} />
 
+              <figure className="mb-7 overflow-hidden rounded-[30px] border border-border bg-gradient-to-br from-slate-50 via-white to-orange-50 shadow-[0_28px_70px_rgba(15,23,42,0.1)]">
+                <div className="aspect-[16/8.7] overflow-hidden bg-slate-100">
+                  <img
+                    src={article.image}
+                    alt={article.title}
+                    className="h-full w-full object-cover object-center"
+                    fetchPriority="high"
+                    decoding="async"
+                  />
+                </div>
+              </figure>
+
               <Link
                 to={`/news?category=${encodeURIComponent(article.category)}`}
-                className="mt-4 inline-flex items-center rounded-full border border-primary/15 bg-primary/5 px-4 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.18em] text-primary"
+                className="inline-flex items-center rounded-full border border-primary/15 bg-primary/5 px-4 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.18em] text-primary"
               >
                 {article.category}
               </Link>
 
-              <h1 className="mt-4 text-[29px] sm:text-[38px] lg:text-[50px] font-extrabold text-foreground leading-[1.06] tracking-[-0.04em] break-words">
+              <h1 className="mt-4 max-w-5xl text-[30px] sm:text-[40px] lg:text-[52px] font-extrabold text-foreground leading-[1.04] tracking-[-0.045em] break-words text-balance">
                 {article.title}
               </h1>
 
               {article.excerpt && (
-                <p className="mt-4 max-w-3xl text-[16px] sm:text-[18px] leading-[1.75] text-slate-600">
+                <p className="mt-4 max-w-4xl text-[16px] sm:text-[19px] leading-[1.8] text-slate-600">
                   {article.excerpt}
                 </p>
               )}
@@ -376,18 +388,6 @@ export default function ArticleDetail() {
                 </button>
               </div>
 
-              <figure className="mb-7 overflow-hidden rounded-[28px] border border-border bg-gradient-to-br from-slate-50 via-white to-orange-50 shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-                <div className="aspect-[16/9] overflow-hidden">
-                  <img
-                    src={article.image}
-                    alt={article.title}
-                    className="h-full w-full object-cover object-center"
-                    fetchPriority="high"
-                    decoding="async"
-                  />
-                </div>
-              </figure>
-
               <div className="mb-6">
                 <button
                   type="button"
@@ -398,41 +398,6 @@ export default function ArticleDetail() {
                   {isListening ? "Pause" : "Listen to article"}
                 </button>
               </div>
-
-              {/* The Briefing - numbered TOC card */}
-              {toc.length > 0 && (
-                <div className="bg-card border border-border rounded-3xl p-5 mb-7 shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => setTocOpen((o) => !o)}
-                    className="w-full flex items-center justify-between mb-3"
-                    aria-expanded={tocOpen}
-                  >
-                    <h2 className="text-[12px] font-extrabold uppercase tracking-[0.18em] text-muted-foreground">The Briefing</h2>
-                    <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${tocOpen ? "" : "-rotate-90"}`} />
-                  </button>
-                  {tocOpen && (
-                    <ul className="space-y-3">
-                      {toc.slice(0, 8).map((h, idx) => (
-                        <li key={h.id} className="flex items-start gap-3">
-                          <span className="text-[11px] mt-1 font-bold text-muted-foreground/60 tabular-nums w-5 shrink-0">
-                            {String(idx + 1).padStart(2, "0")}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => jumpTo(h.id)}
-                            className={`text-left text-[14px] sm:text-[15px] font-semibold break-words flex-1 hover:text-primary transition ${idx === 0 ? "text-primary" : "text-foreground/80"}`}
-                          >
-                            {h.text}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-
-
 
               {/* Lead form ABOVE content - light/compact, less intrusive on mobile */}
               <div className="my-3 sm:my-4 opacity-95">
@@ -527,6 +492,37 @@ export default function ArticleDetail() {
 
             <aside className="lg:col-span-4 space-y-5">
               <div className="lg:sticky lg:top-20 space-y-5">
+                <div className="hidden lg:block rounded-[28px] border border-border bg-gradient-to-br from-white via-slate-50 to-orange-50 p-5 shadow-sm">
+                  <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-primary">Get expert support</p>
+                  <h3 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-foreground">Need help after reading this update?</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">Speak to a DekhoCampus counsellor for personalised next steps on colleges, exams, counselling and admissions.</p>
+                  <div className="mt-4 rounded-2xl border border-white/70 bg-white/90 p-3 shadow-sm">
+                    <LeadCaptureForm
+                      variant="sidebar"
+                      title="Get free counselling"
+                      subtitle="Fast expert callback for your next step"
+                      source={`article_sidebar_${article.slug}`}
+                      interestedCollegeSlug={article.tags.find((tag) => tag.includes("college-"))}
+                    />
+                  </div>
+                </div>
+
+                <div className="hidden lg:block rounded-[28px] border border-border bg-card p-5 shadow-sm">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-muted-foreground">Stay on this topic</p>
+                      <h3 className="mt-1 text-lg font-bold text-foreground">Share or save this article</h3>
+                    </div>
+                    <Share2 className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" className="justify-start rounded-xl" onClick={copyLink}><Link2 className="mr-2 h-4 w-4" /> Copy link</Button>
+                    <Button variant="outline" className="justify-start rounded-xl" onClick={handleSave}><Bookmark className={`mr-2 h-4 w-4 ${saved ? "fill-current" : ""}`} /> {saved ? "Saved" : "Save"}</Button>
+                    <Button variant="outline" className="justify-start rounded-xl" onClick={() => shareTo("whatsapp")}><Send className="mr-2 h-4 w-4" /> WhatsApp</Button>
+                    <Button variant="outline" className="justify-start rounded-xl" onClick={() => shareTo("linkedin")}><Share2 className="mr-2 h-4 w-4" /> LinkedIn</Button>
+                  </div>
+                </div>
+
                 <DeferUntilVisible minHeight={300}>
                   <DynamicAdBanner variant="vertical" position="sidebar" page="articles" itemSlug={cleanSlug} />
                 </DeferUntilVisible>

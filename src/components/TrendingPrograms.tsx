@@ -77,15 +77,15 @@ export function TrendingPrograms() {
 
   return (
     <>
-      <section className="py-8 md:py-12" aria-labelledby="trending-programs-heading">
-        <div className="text-center mb-6 md:mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wide mb-3">
+      <section className="py-6 md:py-8" aria-labelledby="trending-programs-heading">
+        <div className="text-center mb-5 md:mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold uppercase tracking-wide mb-2">
             <GraduationCap className="w-3.5 h-3.5" /> Premium Programs
           </div>
-          <h2 id="trending-programs-heading" className="text-headline font-bold text-foreground">
+          <h2 id="trending-programs-heading" className="text-2xl font-bold text-foreground md:text-4xl">
             Upgrade Yourself with <span className="text-primary">IIT / IIM / Dr. Tag</span>
           </h2>
-          <p className="text-muted-foreground mt-2 text-sm max-w-xl mx-auto">
+          <p className="text-muted-foreground mt-2 text-sm max-w-2xl mx-auto">
             100% online programs from top-ranked institutes - learn from anywhere at your own pace with exclusive <span className="text-foreground font-semibold">DekhoCampus</span> pricing.
           </p>
         </div>

@@ -21,8 +21,8 @@ type Control = {
 const PROVIDERS: Record<string, string[]> = {
   counselor: ["gemini"],
   "data-cleaner": ["anthropic", "gemini"],
-  "blog-studio": ["anthropic"],
-  "blog-agent": ["anthropic"],
+  "blog-studio": ["anthropic", "gemini", "openai"],
+  "blog-agent": ["anthropic", "gemini", "openai"],
   "admin-ai-generate": ["anthropic", "gemini", "openai"],
   "blog-image": ["openai"],
 };

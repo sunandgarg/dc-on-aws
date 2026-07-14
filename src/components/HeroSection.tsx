@@ -475,7 +475,7 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
               {[
                 ["13K+", "Colleges"],
                 ["840+", "Courses"],
-                ["₹0", "Agent markup"],
+                ["350+", "Exams"],
               ].map(([value, label]) => (
                 <div key={label} className="px-2 text-center sm:px-4 sm:text-left">
                   <strong className="block text-base font-black text-foreground sm:text-xl">{value}</strong>

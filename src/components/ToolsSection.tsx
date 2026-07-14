@@ -45,7 +45,7 @@ export function ToolsSection() {
             Smart Toolkit
           </div>
           <h2 id="tools-heading" className="text-headline font-bold text-foreground">
-            AI Tools That Actually <span className="text-gradient-accent">Slap</span> - 
+            AI Tools That Actually <span className="text-gradient-accent">Help</span> - 
             <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-md bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs md:text-sm font-extrabold tracking-wide align-middle shadow-sm">
               100% FREE
             </span>

@@ -178,7 +178,7 @@ export default function AdminAIProviders() {
             <ul className="list-disc pl-4 text-muted-foreground space-y-0.5">
               <li>Add your own provider (OpenAI, Gemini, Claude, Groq, OpenRouter, or any OpenAI-compatible API)</li>
               <li>Enter the API key, base URL and provider default model. Feature-specific routing is configured in the Runtime Control Centre above.</li>
-              <li>Diya chat uses Gemini; data cleaning and blog text use Claude; branded blog covers use OpenAI Images.</li>
+              <li>Diya chat uses Gemini. Data cleaning, blog studio and auto blog can now switch between Claude, Gemini and OpenAI from the Runtime Control Centre. Branded blog covers continue to use OpenAI Images.</li>
             </ul>
           </div>
           <Button onClick={() => setShowAddForm(!showAddForm)} size="sm" className="rounded-xl gap-1">

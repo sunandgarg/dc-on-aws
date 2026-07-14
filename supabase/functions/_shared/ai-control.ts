@@ -27,12 +27,16 @@ export async function getAiRuntimeControl(admin: any, feature: string): Promise<
   return control || { feature, is_enabled: true, provider: null, model: null, stop_reason: null };
 }
 
-export async function applyClaudeRuntimeControl(admin: any, feature: string, config: { textModel: string }) {
+export async function applyBlogTextRuntimeControl(admin: any, feature: string, config: { textModel: string }) {
   const control = await getAiRuntimeControl(admin, feature);
-  if (control.provider && control.provider !== "anthropic") {
-    throw new Error(`${feature} currently supports Claude text models only`);
+  if (control.provider) {
+    if (control.model) config.textModel = control.model;
+    else if (control.provider === "anthropic") config.textModel = "auto-sonnet";
+    else if (control.provider === "gemini") config.textModel = "gemini-3.5-flash";
+    else if (control.provider === "openai") config.textModel = "gpt-5";
+  } else if (control.model) {
+    config.textModel = control.model;
   }
-  if (control.model) config.textModel = control.model;
   return control;
 }
 
