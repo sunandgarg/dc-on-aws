@@ -443,7 +443,7 @@ Return ONLY a JSON array. No markdown, no commentary.`;
       blogAi = await loadBlogAiConfig(sb, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
       modelUsed = `anthropic:${blogAi.textModel}`;
       try {
-        text = await generateBlogJson(blogAi, `${SYSTEM_RULES}\n\n${userPrompt}\n\nUse current SEO, GEO and AEO guidance. Never use an em dash. This is AI-assisted editor-reviewed work - never claim human authorship, undetectability or 0 AI. Return only valid JSON.`);
+        text = await generateBlogJson(blogAi, `${SYSTEM_RULES}\n\n${userPrompt}\n\nUse current SEO, GEO and AEO guidance. Never use an em dash. This is AI-assisted editor-reviewed work - never claim human authorship, undetectability or 0 AI. Return only valid JSON.`, { admin: sb, feature: "admin-ai-generate", operation: entityType });
       } catch (e: any) {
         return new Response(JSON.stringify({ error: e?.message || String(e), model_used: modelUsed }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
       }

@@ -1,3 +1,4 @@
+import { logAiUsage } from "./ai-usage.ts";
 const encoder = new TextEncoder();
 
 export type BlogAiConfig = {
@@ -84,7 +85,7 @@ export async function loadBlogAiConfig(admin: any, serviceRoleKey: string): Prom
   };
 }
 
-export async function generateBlogJson(config: BlogAiConfig, prompt: string) {
+export async function generateBlogJson(config: BlogAiConfig, prompt: string, telemetry?: { admin: any; feature: string; operation?: string; userId?: string | null }) {
   if (!config.claudeKey) throw new Error("Claude blog API key is not configured in Admin - AI Providers");
   const model = await resolveClaudeTextModel(config);
   const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -99,6 +100,7 @@ export async function generateBlogJson(config: BlogAiConfig, prompt: string) {
   });
   if (!response.ok) throw new Error(`Claude blog generation failed (${response.status}): ${(await response.text()).slice(0, 500)}`);
   const data = await response.json();
+  if (telemetry?.admin) await logAiUsage(telemetry.admin, { provider: "anthropic", model, feature: telemetry.feature, operation: telemetry.operation || "text-generation", inputTokens: data.usage?.input_tokens, outputTokens: data.usage?.output_tokens, userId: telemetry.userId });
   return (data.content || []).map((block: any) => block.type === "text" ? block.text : "").join("");
 }
 
@@ -253,6 +255,7 @@ export async function generateAndUploadBlogCover(admin: any, config: BlogAiConfi
   if (config.openaiKey) {
     try {
       backdropHref = await maybeGenerateBackdrop(config, safeHook);
+      if (backdropHref) await logAiUsage(admin, { provider: "openai", model: config.imageModel, feature: "blog-cover", operation: "image-generation", imageCount: 1, estimatedCostUsd: config.imageQuality === "high" ? 0.12 : config.imageQuality === "medium" ? 0.06 : 0.03, metadata: { quality: config.imageQuality, slug } });
     } catch (error) {
       console.warn("Blog cover backdrop generation failed, using deterministic brand template instead.", error);
     }

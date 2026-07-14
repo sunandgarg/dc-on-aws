@@ -121,11 +121,11 @@ function parseJson(raw: string) {
   }
 }
 
-async function parseOrRepairJson(blogAi: any, raw: string) {
+async function parseOrRepairJson(blogAi: any, raw: string, admin?: any) {
   try {
     return parseJson(raw);
   } catch (firstError) {
-    const repaired = await generateBlogJson(blogAi, `Repair the following malformed JSON into one valid JSON object. Preserve every factual value and all HTML content. Escape quotes, backslashes and newlines correctly. Remove markdown fences. Return only the repaired JSON object.\n\n${raw}`);
+    const repaired = await generateBlogJson(blogAi, `Repair the following malformed JSON into one valid JSON object. Preserve every factual value and all HTML content. Escape quotes, backslashes and newlines correctly. Remove markdown fences. Return only the repaired JSON object.\n\n${raw}`, admin ? { admin, feature: "blog-agent", operation: "json-repair" } : undefined);
     try {
       return parseJson(repaired);
     } catch {
@@ -248,8 +248,8 @@ Deno.serve(async (req) => {
     const existingTitles = new Set(existingTitleList);
 
     const topicPrompt = `You are the DekhoCampus education-news editor. Today is ${new Date().toISOString().slice(0, 10)} in India.\n\nResearch signals from competitor and own website pages:\n${JSON.stringify(signals)}\n\nRecent DekhoCampus article titles and slugs to avoid duplicates:\n${JSON.stringify(existingArticles.slice(0, 1500).map((a: any) => ({ title: a.title, slug: a.slug })))}\n\nPick the best ${Math.max(settings.posts_per_run * 2, 4)} article opportunities for Indian students and parents. Prioritise timely admissions, exams, counselling, scholarships, careers and college decisions. Reject anything already covered by DekhoCampus. Do not copy competitors. Return JSON only: {topics:[{title,angle,primary_keyword,geo_focus,reason,category,tags:[...]}]}.`;
-    const topicRaw = await generateBlogJson(blogAi, topicPrompt + "\nUse natural plain language, never use an em dash, and return JSON only.");
-    const topics = ((await parseOrRepairJson(blogAi, topicRaw)).topics || []).filter((topic: any) => {
+    const topicRaw = await generateBlogJson(blogAi, topicPrompt + "\nUse natural plain language, never use an em dash, and return JSON only.", { admin, feature: "blog-agent", operation: "topic-research" });
+    const topics = ((await parseOrRepairJson(blogAi, topicRaw, admin)).topics || []).filter((topic: any) => {
       const candidateSlug = slugify(topic.title || "");
       return candidateSlug && !existingSlugs.has(candidateSlug) && !existingTitles.has(normalizedTitle(topic.title)) && !isSimilarTitle(topic.title, existingTitleList);
     }).slice(0, settings.posts_per_run);
@@ -266,8 +266,8 @@ Deno.serve(async (req) => {
       const baseProgress = 30 + Math.round((topicIndex / Math.max(topics.length, 1)) * 65);
       await updateRun(admin, runId, { progress: baseProgress, current_step: `Writing article ${topicIndex + 1} of ${topics.length}`, completed_steps: 2 + topicIndex * 3 });
       const articlePrompt = `Create a complete original DekhoCampus article from this approved topic:\n${JSON.stringify(topic)}\n\nResearch context:\n${JSON.stringify(signals)}\n\nTarget length: ${settings.word_limit} words.\n\nReturn JSON only: {title,slug,description,content_html,meta_title,meta_description,meta_keywords,tags,entity_suggestions:[{entity_type,entity_slug,label}],research_notes,cover_kicker}.\n\nRules: optimise for SEO, GEO, AEO and student usefulness. Use plain human wording, short paragraphs, useful headings, FAQs, and small hyphen '-' only. Never copy competitor wording. Avoid fake certainty on dates, fees, cutoffs or rules. Mention official-source verification where needed. Add a final Sources section with source names or official-source guidance.`;
-      const articleRaw = await generateBlogJson(blogAi, articlePrompt + "\nFollow current SEO, GEO and AEO guidance. This is AI-assisted editor-reviewed content. Never claim human authorship, undetectability or 0 AI.");
-      const draft = await parseOrRepairJson(blogAi, articleRaw);
+      const articleRaw = await generateBlogJson(blogAi, articlePrompt + "\nFollow current SEO, GEO and AEO guidance. This is AI-assisted editor-reviewed content. Never claim human authorship, undetectability or 0 AI.", { admin, feature: "blog-agent", operation: "article-generation" });
+      const draft = await parseOrRepairJson(blogAi, articleRaw, admin);
       const slug = slugify(draft.slug || draft.title || topic.title);
       if (!slug || existingSlugs.has(slug) || existingTitles.has(normalizedTitle(draft.title || topic.title)) || isSimilarTitle(draft.title || topic.title, existingTitleList)) continue;
       await updateRun(admin, runId, { progress: Math.min(90, baseProgress + 12), current_step: `Generating cover ${topicIndex + 1} of ${topics.length}`, completed_steps: 3 + topicIndex * 3 });
