@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { GoogleGLogo } from "@/components/GoogleGLogo";
 import logo from "@/assets/dekhocampus-footer-logo.png";
 import dcLogo from "@/assets/dc-logo.png";
-import { QuickLinksBar } from "@/components/QuickLinksBar";
+import { GlobalDiscoveryBar } from "@/components/GlobalDiscoveryBar";
 
 const footerLinks = {
   explore: [
@@ -62,12 +62,7 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Quick Links - sitewide horizontal nav, Gen-Z 2026 vibe */}
-      <div className="bg-background text-foreground border-b border-background/10">
-        <div className="container">
-          <QuickLinksBar compact />
-        </div>
-      </div>
+      <GlobalDiscoveryBar />
 
       {/* Lead Capture Section */}
       <div className="border-b border-background/10">
@@ -83,6 +78,7 @@ export function Footer() {
               title="🎯 Get Expert College Counseling - Free!"
               subtitle="Our counselors have helped 50,000+ students find their dream college"
               source="footer_banner"
+              simple
             />
           </motion.div>
         </div>

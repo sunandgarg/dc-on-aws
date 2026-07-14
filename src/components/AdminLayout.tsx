@@ -105,7 +105,7 @@ const groups: NavGroup[] = [
       { label: "Program Categories", href: "/admin/program-categories", icon: Star, module: "promoted_programs" },
       { label: "Hero Banners & Images", href: "/admin/banners", icon: Image, module: "banners" },
       { label: "Hero Background", href: "/admin/hero", icon: Image },
-      { label: "Hero Bar Categories", href: "/admin/hero-categories", icon: Image },
+      { label: "Global Discovery Bar", href: "/admin/hero-categories", icon: PanelTop },
       { label: "Landing Pages", href: "/admin/landing-pages", icon: Megaphone },
       { label: "About Us", href: "/admin/about", icon: Lightbulb },
       { label: "Legal Pages", href: "/admin/legal", icon: Scale, module: "legal" },

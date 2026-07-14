@@ -15,6 +15,7 @@ const mobileNav = [
   { label: "Vacancies", href: "/vacancies" },
   { label: "News", href: "/news" },
   { label: "Study Material", href: "/study-material", children: [
+    { label: "College Study Material", href: "/college-study-material" },
     { label: "Class 12", href: "/study-material/class-12" },
     { label: "Class 11", href: "/study-material/class-11" },
     { label: "Class 10", href: "/study-material/class-10" },

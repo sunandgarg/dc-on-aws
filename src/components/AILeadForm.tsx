@@ -1,18 +1,15 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { X, Send, Loader2, Phone, User, Mail, BookOpen, GraduationCap } from "lucide-react";
-import { IITAlumniBadge } from "@/components/IITAlumniBadge";
+import { X, Send, Loader2, User, Mail, BookOpen, MapPin, ShieldCheck } from "lucide-react";
 import dcLogo from "@/assets/dc-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { useStatesAndCities } from "@/hooks/useLocations";
-import { educationStatus } from "@/data/indianLocations";
 import { toast } from "sonner";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { getPrefillCookie, savePrefillCookie } from "@/components/CookieConsent";
 
-import { UrgencyHooks } from "@/components/UrgencyHooks";
 import { useInlineOtp, isValidIndianMobile, PHONE_HINT, sanitizeIndianMobile } from "@/components/LeadInlineOtp";
 import { ProgramModeToggle, type ProgramMode } from "@/components/ProgramModeToggle";
 import { detectDeviceType, inferSourceCategory } from "@/lib/leadTracking";
@@ -35,7 +32,7 @@ interface AILeadFormProps {
 
 export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
   const [formData, setFormData] = useState({
-    name: "", email: "", phone: "", course: "", otherCourse: "", state: "", city: "", education: "",
+    name: "", email: "", phone: "", course: "", otherCourse: "", state: "", city: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [authorized, setAuthorized] = useState(true);
@@ -75,7 +72,7 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
         body: JSON.stringify({
           name: formData.name, email: formData.email || null, phone: sanitizeIndianMobile(formData.phone),
           city: formData.city || null, state: formData.state || null,
-          current_situation: `${formData.education ? formData.education + " | " : ""}${courseValue || ""}` || null,
+          current_situation: courseValue || null,
           source: "ai_chat_lead",
           otp_verified: otp.verified,
           program_mode: programMode,
@@ -94,8 +91,8 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.phone || !formData.course || !formData.state || !formData.city) {
-      toast.error("Please fill all required fields");
+    if (!formData.name || !formData.phone || !formData.course) {
+      toast.error("Please add your name, mobile number and course interest");
       return;
     }
     if (!isValidIndianMobile(formData.phone)) {
@@ -103,7 +100,7 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
+    if (formData.email && !emailRegex.test(formData.email)) {
       toast.error("Please enter a valid email address");
       return;
     }
@@ -131,17 +128,16 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
         initial={{ scale: 0.95, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.95, opacity: 0, y: 20 }}
-        className="bg-card rounded-2xl shadow-elevated w-full max-w-sm overflow-visible my-auto"
+        className="bg-card rounded-[28px] shadow-elevated w-full max-w-md overflow-visible my-auto border border-border/70"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header - warm & personal */}
-        <div className="bg-primary px-5 py-4 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-primary to-blue-700 px-5 py-4 flex items-center justify-between rounded-t-[27px]">
           <div className="flex items-center gap-3">
             <img src={dcLogo} alt="DekhoCampus" className="w-10 h-10 object-contain rounded-full bg-primary-foreground/20 p-1" />
             <div>
-              <h3 className="font-bold text-primary-foreground text-sm">Tell me a little about you</h3>
-              <p className="text-[11px] text-primary-foreground/90">So we can customise results only for you</p>
-              <div className="mt-1"><IITAlumniBadge showTagline={false} /></div>
+              <h3 className="font-bold text-primary-foreground">Start with iKi</h3>
+              <p className="text-[11px] text-primary-foreground/90">Three quick details for personalised guidance</p>
             </div>
           </div>
           <button onClick={onClose} className="text-primary-foreground/80 hover:text-primary-foreground">
@@ -149,8 +145,8 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-2.5">
-          <UrgencyHooks variant="full" />
+        <form onSubmit={handleSubmit} className="p-5 space-y-3">
+          <div className="rounded-2xl bg-emerald-50 px-3.5 py-2.5 text-xs font-semibold text-emerald-800 flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Free guidance - no sales pressure</div>
 
           {/* Name */}
           <div className="relative">
@@ -189,29 +185,6 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
           </div>
 
 
-          {/* Email - required */}
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={formData.email}
-              onChange={(e) => update("email", e.target.value)}
-              placeholder="Email Address *"
-              type="email"
-              className="pl-10 rounded-xl h-10 text-sm"
-              required
-            />
-          </div>
-
-          {/* Education status */}
-          <select
-            value={formData.education}
-            onChange={(e) => update("education", e.target.value)}
-            className={selectCls}
-          >
-            <option value="">Current Education Status</option>
-            {educationStatus.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-
           {/* Course select - required */}
           <div className="relative">
             <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -235,23 +208,21 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
             />
           )}
 
-          {/* State & City - required */}
-          <div className="grid grid-cols-2 gap-2">
-            <SearchableSelect
-              options={locations?.states || []}
-              value={formData.state}
-              onChange={(v) => { update("state", v); update("city", ""); }}
-              placeholder="State *"
-            />
-            <SearchableSelect
-              options={cities}
-              value={formData.city}
-              onChange={(v) => update("city", v)}
-              placeholder={formData.state ? "City *" : "Select state first"}
-            />
-          </div>
-
           <ProgramModeToggle value={programMode} onChange={setProgramMode} />
+
+          <details className="group rounded-2xl border border-border/70 bg-muted/25 px-3.5 py-2.5">
+            <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-bold text-foreground"><span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> Add location or email <span className="font-medium text-muted-foreground">(optional)</span></span><span className="text-primary group-open:rotate-45 transition">+</span></summary>
+            <div className="mt-3 space-y-2.5">
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input value={formData.email} onChange={(e) => update("email", e.target.value)} placeholder="Email address (optional)" type="email" className="pl-10 rounded-xl h-10 text-sm" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <SearchableSelect options={locations?.states || []} value={formData.state} onChange={(v) => { update("state", v); update("city", ""); }} placeholder="State" />
+                <SearchableSelect options={cities} value={formData.city} onChange={(v) => update("city", v)} placeholder={formData.state ? "City" : "Select state"} />
+              </div>
+            </div>
+          </details>
 
           {/* Authorization checkbox */}
           <label className="flex items-start gap-2 cursor-pointer">
@@ -263,10 +234,10 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
 
           <Button type="submit" className="w-full bg-primary hover:bg-primary/90 rounded-xl h-11 text-sm" disabled={isLoading || !authorized}>
             {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-            {isLoading ? "Saving..." : "Get Expert Guidance"}
+            {isLoading ? "Saving..." : "Continue with iKi"}
           </Button>
           <p className="text-[10px] text-center text-muted-foreground">
-            Our counselors will reach out within 30 minutes
+            Your details stay secure. No spam, ever.
           </p>
         </form>
       </motion.div>

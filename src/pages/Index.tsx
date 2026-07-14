@@ -2,7 +2,6 @@ import { lazy, Suspense, useCallback, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { ProfileCompletionBanner } from "@/components/ProfileCompletionBanner";
 import { HeroSection } from "@/components/HeroSection";
-import { QuickLinksBar } from "@/components/QuickLinksBar";
 import { HomeUrgencyStrip } from "@/components/UrgencyHooks";
 import { DeferredRender } from "@/components/DeferredRender";
 
@@ -37,7 +36,6 @@ export default function Index() {
     <ProfileCompletionBanner />
     <main id="main-content">
       <div id="hero"><HeroSection onOpenChat={handleOpenChat} /></div>
-      <div id="quick-links"><QuickLinksBar /></div>
       <DeferredRender minHeight={900}>
         <Suspense fallback={<div className="min-h-[900px]" aria-hidden="true" />}><HomeBelowFold /></Suspense>
       </DeferredRender>

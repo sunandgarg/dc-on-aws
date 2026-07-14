@@ -16,16 +16,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
 import { useHeroSettings } from "@/hooks/useHeroSettings";
 import dcLogo from "@/assets/dc-logo.png";
-import iconCollege from "@/assets/cat-college.png";
-import iconCourse from "@/assets/cat-course.png";
-import iconExam from "@/assets/cat-exam.png";
-import iconApplication from "@/assets/cat-application.png";
-import iconReviews from "@/assets/cat-reviews.png";
-import iconNews from "@/assets/cat-news.png";
 import { HeroCounsellingCard } from "@/components/HeroCounsellingCard";
+import { useHeroCategories } from "@/hooks/useHeroCategories";
 
 const YEAR = new Date().getFullYear();
 const suggestedPrompts = [
@@ -33,17 +27,6 @@ const suggestedPrompts = [
   `How to crack JEE Main ${YEAR}?`,
   "IIT vs NIT - what's right for me?",
   "Top MBA colleges after graduation?",
-];
-
-type QuickCategory = { key: string; label: string; img: string; tint: string; href: string };
-
-const DEFAULT_QUICK_CATEGORIES: QuickCategory[] = [
-  { key: "college",     label: "13,004+ Colleges", img: iconCollege,     tint: "bg-rose-50 hover:bg-rose-100/70 border-rose-100",         href: "/colleges" },
-  { key: "course",      label: "840+ Courses",     img: iconCourse,      tint: "bg-sky-50 hover:bg-sky-100/70 border-sky-100",            href: "/courses" },
-  { key: "exam",        label: "219+ Exams",       img: iconExam,        tint: "bg-violet-50 hover:bg-violet-100/70 border-violet-100",   href: "/exams" },
-  { key: "application", label: "Application Form", img: iconApplication, tint: "bg-emerald-50 hover:bg-emerald-100/70 border-emerald-100", href: "/colleges" },
-  { key: "review",      label: "Review",           img: iconReviews,     tint: "bg-amber-50 hover:bg-amber-100/70 border-amber-100",      href: "/colleges" },
-  { key: "news",        label: "News",             img: iconNews,        tint: "bg-sky-50 hover:bg-sky-100/70 border-sky-100",            href: "/news" },
 ];
 
 interface SearchResult {
@@ -66,36 +49,7 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
   const [headlineIndex, setHeadlineIndex] = useState(0);
   const navigate = useNavigate();
 
-  // Admin-managed hero bar tiles (fallback to static if unavailable/empty)
-  const { data: heroCategoryRows } = useQuery({
-    queryKey: ["hero-categories"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("hero_categories")
-        .select("key,label,image_url,href,tint,is_active,display_order")
-        .eq("is_active", true)
-        .order("display_order", { ascending: true });
-      if (error) throw error;
-      return (data as Array<{ key: string; label: string; image_url: string; href: string; tint: string }>) ?? [];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const quickCategories: QuickCategory[] = useMemo(() => {
-    const rows = heroCategoryRows ?? [];
-    if (rows.length === 0) return DEFAULT_QUICK_CATEGORIES;
-    const byKey = new Map(DEFAULT_QUICK_CATEGORIES.map((d) => [d.key, d]));
-    return rows.map((r) => {
-      const fallback = byKey.get(r.key);
-      return {
-        key: r.key,
-        label: r.label || fallback?.label || r.key,
-        img: r.image_url || fallback?.img || iconCollege,
-        tint: r.tint || fallback?.tint || "bg-muted border-border",
-        href: r.href || fallback?.href || "/",
-      };
-    });
-  }, [heroCategoryRows]);
+  const { data: quickCategories } = useHeroCategories();
 
 
   const [bgIndex, setBgIndex] = useState(0);

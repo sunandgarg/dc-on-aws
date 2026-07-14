@@ -7,12 +7,9 @@ import { ExploreCTACards } from "@/components/ExploreCTACards";
 import { DynamicAdBanner } from "@/components/DynamicAdBanner";
 import { CitySearch } from "@/components/CitySearch";
 import { OnlineEducationSection } from "@/components/OnlineEducationSection";
-import { QuickLinksBar } from "@/components/QuickLinksBar";
 import { CareerScopeSection } from "@/components/CareerScopeSection";
 import { ToolsSection } from "@/components/ToolsSection";
 import { NewsSection } from "@/components/NewsSection";
-import { StudyMaterialStrip } from "@/components/StudyMaterialStrip";
-import { CollegeStudyStrip } from "@/components/CollegeStudyStrip";
 import { ExamStrategiesSection } from "@/components/ExamStrategiesSection";
 import { FeaturesSection } from "@/components/FeaturesSection";
 import { GoogleAd } from "@/components/ads/GoogleAd";
@@ -34,14 +31,11 @@ export default function HomeBelowFold() {
       <div id="city-search-heading"><CitySearch /></div>
     </div>
     <div id="online-education-heading"><OnlineEducationSection /></div>
-    <div className="container"><QuickLinksBar compact /></div>
     <div className="container">
       <div id="career-scope-heading"><CareerScopeSection /></div>
       <div id="tools-heading"><ToolsSection /></div>
       <section className="py-4"><DynamicAdBanner variant="horizontal" position="mid-page" /></section>
       <div id="news-heading"><NewsSection /></div>
-      <div id="study-material-heading"><StudyMaterialStrip /></div>
-      <div id="college-study-material-heading"><CollegeStudyStrip /></div>
       <div id="exam-strategies-heading"><ExamStrategiesSection /></div>
       <FeaturesSection />
       <GoogleAd placement="homepage" position="middle" pageKey="homepage" className="my-4" />

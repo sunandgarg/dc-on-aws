@@ -182,6 +182,12 @@ export function MegaMenu() {
           { label: "📖 Chapter Notes", href: "/news/tag/notes" },
           { label: "🧠 PYQs (Last 10 yr)", href: "/news/tag/previous-papers" },
         ] },
+        { title: "College Study Material", items: [
+          { label: "B.Tech Notes and Papers", href: "/college-study-material?program=btech" },
+          { label: "BCA Notes and Papers", href: "/college-study-material?program=bca" },
+          { label: "MBA Notes and Papers", href: "/college-study-material?program=mba" },
+          { label: "Browse universities", href: "/college-study-material" },
+        ] },
       ],
     },
     {
@@ -231,7 +237,7 @@ export function MegaMenu() {
   };
 
   return (
-    <nav ref={ref} className="hidden lg:flex items-center gap-0.5" aria-label="Main">
+    <nav ref={ref} className="hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
       {sections.map((s) => {
         const Icon = iconFor(s.label);
         const active = open === s.label;
@@ -262,26 +268,30 @@ export function MegaMenu() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 6 }}
-                  className={`absolute left-0 top-full mt-1 bg-card rounded-2xl border border-border shadow-xl p-5 z-50 grid gap-5 ${s.columns.length === 4 ? "w-[860px] grid-cols-4" : "w-[720px] grid-cols-3"}`}
+                  className={`fixed left-1/2 top-[68px] z-50 grid max-h-[min(72vh,620px)] w-[min(94vw,1120px)] -translate-x-1/2 gap-5 overflow-y-auto rounded-[28px] border border-slate-200 bg-white/98 p-6 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] backdrop-blur-xl ${s.columns.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}
                 >
                   {s.columns.map((col, i) => (
-                    <div key={i}>
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2.5">{col.title}</p>
-                      <ul className="space-y-1.5">
+                    <div key={i} className="min-w-0 rounded-2xl bg-slate-50/80 p-4 ring-1 ring-inset ring-slate-100">
+                      <p className="mb-3 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.13em] text-primary"><span className="h-1.5 w-1.5 rounded-full bg-accent" />{col.title}</p>
+                      <ul className="space-y-1">
                         {col.items.map((it) => (
                           <li key={it.label + it.href}>
                             <Link
                               to={it.href}
                               onClick={() => setOpen(null)}
-                              className="text-sm text-foreground hover:text-primary transition truncate block"
+                              className="group flex min-h-9 items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-white hover:text-primary hover:shadow-sm"
                             >
-                              {it.label}
+                              <span className="truncate">{it.label}</span><span className="opacity-0 transition group-hover:opacity-100">→</span>
                             </Link>
                           </li>
                         ))}
                       </ul>
                     </div>
                   ))}
+                  <div className="col-span-full flex items-center justify-between border-t border-slate-100 pt-4">
+                    <div><p className="text-sm font-extrabold text-slate-900">Explore with confidence</p><p className="text-xs text-slate-500">Verified colleges, courses, exams and decision tools in one place.</p></div>
+                    {s.href && <Link to={s.href} onClick={() => setOpen(null)} className="rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground shadow-lg shadow-primary/20">View all {s.label} →</Link>}
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

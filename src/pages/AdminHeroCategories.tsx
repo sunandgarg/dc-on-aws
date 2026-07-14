@@ -15,7 +15,7 @@ export default function AdminHeroCategories() {
       </div>
 
       <p className="text-sm text-muted-foreground mb-4">
-        Manage the six tiles shown right below the homepage search bar. Upload a new icon/logo image, change the label, link, or display order.
+        Manage the six discovery tiles used in the homepage hero and above the footer across the website. Upload an icon, change the label or destination, reorder cards, or temporarily disable one.
       </p>
       <SimpleTableAdmin
         table="hero_categories"

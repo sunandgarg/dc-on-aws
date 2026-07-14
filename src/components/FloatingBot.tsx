@@ -193,13 +193,11 @@ export function FloatingBot() {
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
             onClick={handleOpen}
-            className="fixed bottom-20 lg:bottom-6 right-4 md:right-6 z-50 w-14 h-14 rounded-full bg-white shadow-glow flex items-center justify-center hover:scale-110 transition-transform active:scale-95 border-2 border-foreground/10"
-            aria-label="Talk to AI Counselor"
+            className="fixed bottom-20 lg:bottom-6 right-4 md:right-6 z-50 flex flex-col items-center gap-1 rounded-2xl bg-transparent hover:scale-105 transition-transform active:scale-95"
+            aria-label="Ask iKi - AI education counselor"
           >
-            <img src={aiBotLogo} alt="AI" className="w-10 h-10 object-contain" />
-            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent text-[10px] text-accent-foreground font-bold flex items-center justify-center animate-bounce-gentle">
-              AI
-            </span>
+            <span className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br from-primary to-blue-700 shadow-[0_12px_36px_-10px_rgba(37,99,235,.75)]"><img src={aiBotLogo} alt="" className="w-10 h-10 object-contain" /><span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent text-[9px] text-accent-foreground font-black flex items-center justify-center">AI</span></span>
+            <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-extrabold text-primary shadow-md ring-1 ring-slate-200">Ask iKi</span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -227,8 +225,8 @@ export function FloatingBot() {
                   <img src={dcLogo} alt="DekhoCampus AI" className="w-7 h-7 object-contain" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm">DekhoCampus AI</h3>
-                  <p className="text-xs opacity-80">24/7 Career Counselor</p>
+                  <h3 className="font-bold text-sm">iKi by DekhoCampus</h3>
+                  <p className="text-xs opacity-80">Your 24/7 education guide</p>
                 </div>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-primary-foreground hover:bg-primary-foreground/20 rounded-full w-8 h-8">
