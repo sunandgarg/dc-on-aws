@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { geminiGenerate, GEMINI_MODEL } from "./gemini.ts";
 import { generateAndUploadBlogCover, generateBlogJson, loadBlogAiConfig } from "../_shared/blog-ai.ts";
+import { applyClaudeRuntimeControl, applyImageRuntimeControl, getAiRuntimeControl } from "../_shared/ai-control.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -205,6 +206,7 @@ Deno.serve(async (req) => {
       ...(body.override || {}),
     };
     const blogAi = await loadBlogAiConfig(admin, service);
+    await applyClaudeRuntimeControl(admin, "blog-agent", blogAi);
     const selectedAuthorIds = Array.isArray(settings.author_ids) ? settings.author_ids.filter(Boolean) : [];
     const { data: selectedAuthorRows } = selectedAuthorIds.length
       ? await admin.from("authors").select("id,name").eq("is_active", true).in("id", selectedAuthorIds)
@@ -263,6 +265,7 @@ Deno.serve(async (req) => {
 
     const createdIds: string[] = [];
     for (const [topicIndex, topic] of topics.entries()) {
+      await getAiRuntimeControl(admin, "blog-agent");
       const baseProgress = 30 + Math.round((topicIndex / Math.max(topics.length, 1)) * 65);
       await updateRun(admin, runId, { progress: baseProgress, current_step: `Writing article ${topicIndex + 1} of ${topics.length}`, completed_steps: 2 + topicIndex * 3 });
       const articlePrompt = `Create a complete original DekhoCampus article from this approved topic:\n${JSON.stringify(topic)}\n\nResearch context:\n${JSON.stringify(signals)}\n\nTarget length: ${settings.word_limit} words.\n\nReturn JSON only: {title,slug,description,content_html,meta_title,meta_description,meta_keywords,tags,entity_suggestions:[{entity_type,entity_slug,label}],research_notes,cover_kicker}.\n\nRules: optimise for SEO, GEO, AEO and student usefulness. Use plain human wording, short paragraphs, useful headings, FAQs, and small hyphen '-' only. Never copy competitor wording. Avoid fake certainty on dates, fees, cutoffs or rules. Mention official-source verification where needed. Add a final Sources section with source names or official-source guidance.`;
@@ -271,6 +274,7 @@ Deno.serve(async (req) => {
       const slug = slugify(draft.slug || draft.title || topic.title);
       if (!slug || existingSlugs.has(slug) || existingTitles.has(normalizedTitle(draft.title || topic.title)) || isSimilarTitle(draft.title || topic.title, existingTitleList)) continue;
       await updateRun(admin, runId, { progress: Math.min(90, baseProgress + 12), current_step: `Generating cover ${topicIndex + 1} of ${topics.length}`, completed_steps: 3 + topicIndex * 3 });
+      await applyImageRuntimeControl(admin, blogAi);
       const featured_image = await generateAndUploadBlogCover(admin, blogAi, slug, draft.hero_hook || draft.title || topic.title);
       const tags = Array.from(new Set([...(draft.tags || []), "auto-blog-agent"]));
       const authorIndex = settings.author_mode === "round_robin" && selectedAuthors.length

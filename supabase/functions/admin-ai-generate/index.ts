@@ -6,7 +6,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { geminiGenerate, GEMINI_MODEL } from "../_shared/gemini.ts";
-import { generateAndUploadBlogCover, generateBlogJson, loadBlogAiConfig } from "../_shared/blog-ai.ts";
+import { generateAndUploadBlogCover, generateBlogJson, loadBlogAiConfig, resolveClaudeTextModel } from "../_shared/blog-ai.ts";
+import { applyClaudeRuntimeControl, applyImageRuntimeControl, getAiRuntimeControl } from "../_shared/ai-control.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -333,6 +334,8 @@ Deno.serve(async (req) => {
     const region = opts.region || "India";
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const runtimeControl = await getAiRuntimeControl(sb, "admin-ai-generate");
+    if (!opts.model && runtimeControl.provider) opts.model = runtimeControl.provider;
     const internal = await fetchInternalDb(sb);
 
     const TABLE_META: Record<string, { table: string; keyField: string }> = {
@@ -441,6 +444,9 @@ Return ONLY a JSON array. No markdown, no commentary.`;
     let blogAi: Awaited<ReturnType<typeof loadBlogAiConfig>> | null = null;
     if (entity_type === "articles") {
       blogAi = await loadBlogAiConfig(sb, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      if (!runtimeControl.provider || runtimeControl.provider === "anthropic") {
+        await applyClaudeRuntimeControl(sb, "admin-ai-generate", blogAi);
+      }
       modelUsed = `anthropic:${blogAi.textModel}`;
       try {
         text = await generateBlogJson(blogAi, `${SYSTEM_RULES}\n\n${userPrompt}\n\nUse current SEO, GEO and AEO guidance. Never use an em dash. This is AI-assisted editor-reviewed work - never claim human authorship, undetectability or 0 AI. Return only valid JSON.`, { admin: sb, feature: "admin-ai-generate", operation: entityType });
@@ -448,8 +454,12 @@ Return ONLY a JSON array. No markdown, no commentary.`;
         return new Response(JSON.stringify({ error: e?.message || String(e), model_used: modelUsed }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
       }
     } else if (direct) {
-      modelUsed = `${direct.provider_name}:${direct.default_model}`;
+      let selectedModel = runtimeControl.model || direct.default_model;
       const isAnthropic = direct.provider_name === "anthropic" || (direct.base_url || "").includes("anthropic.com");
+      if (isAnthropic && selectedModel.startsWith("auto-")) {
+        selectedModel = await resolveClaudeTextModel({ claudeKey: direct.api_key_encrypted, openaiKey: "", textModel: selectedModel, imageModel: "gpt-image-1", imageQuality: "medium" });
+      }
+      modelUsed = `${direct.provider_name}:${selectedModel}`;
       let resp: Response;
       if (isAnthropic) {
         resp = await fetch(direct.base_url, {
@@ -460,7 +470,7 @@ Return ONLY a JSON array. No markdown, no commentary.`;
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: direct.default_model,
+            model: selectedModel,
             max_tokens: 8192,
             system: SYSTEM_RULES,
             messages: [{ role: "user", content: userPrompt + "\n\nReturn ONLY valid JSON. No prose, no markdown fences." }],
@@ -468,7 +478,7 @@ Return ONLY a JSON array. No markdown, no commentary.`;
         });
       } else {
         const body: any = {
-          model: direct.default_model,
+          model: selectedModel,
           messages: [
             { role: "system", content: SYSTEM_RULES },
             { role: "user", content: userPrompt },
@@ -498,12 +508,14 @@ Return ONLY a JSON array. No markdown, no commentary.`;
         ?? "[]";
     } else {
       // Default → Google Gemini direct
-      modelUsed = `gemini:${GEMINI_MODEL}`;
+      const selectedModel = runtimeControl.model || GEMINI_MODEL;
+      modelUsed = `gemini:${selectedModel}`;
       try {
         text = await geminiGenerate({
           system: SYSTEM_RULES,
           prompt: userPrompt,
           json: true,
+          model: selectedModel,
         }) || "[]";
       } catch (e: any) {
         return new Response(JSON.stringify({ error: e?.message || String(e), model_used: modelUsed }), {
@@ -536,7 +548,10 @@ Return ONLY a JSON array. No markdown, no commentary.`;
       if (meta.table === "articles") {
         const title = String(out.title || out.name || topic || "DekhoCampus update");
         const slug = String(out.slug || title).toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 90);
-        if (blogAi) out.featured_image = await generateAndUploadBlogCover(sb, blogAi, slug, out.hero_hook || title);
+        if (blogAi) {
+          await applyImageRuntimeControl(sb, blogAi);
+          out.featured_image = await generateAndUploadBlogCover(sb, blogAi, slug, out.hero_hook || title);
+        }
         if (!Array.isArray(out.entity_suggestions)) out.entity_suggestions = [];
       }
       if (opts.author_id && HAS_AUTHOR.has(meta.table)) out.author_id = opts.author_id;

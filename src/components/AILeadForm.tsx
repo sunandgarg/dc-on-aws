@@ -136,7 +136,7 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
           <div className="flex items-center gap-3">
             <img src={dcLogo} alt="DekhoCampus" className="w-10 h-10 object-contain rounded-full bg-primary-foreground/20 p-1" />
             <div>
-              <h3 className="font-bold text-primary-foreground">Start with Thor</h3>
+              <h3 className="font-bold text-primary-foreground">Start with Diya</h3>
               <p className="text-[11px] text-primary-foreground/90">Three quick details for personalised guidance</p>
             </div>
           </div>
@@ -234,7 +234,7 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
 
           <Button type="submit" className="w-full bg-primary hover:bg-primary/90 rounded-xl h-11 text-sm" disabled={isLoading || !authorized}>
             {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-            {isLoading ? "Saving..." : "Continue with Thor"}
+            {isLoading ? "Saving..." : "Continue with Diya"}
           </Button>
           <p className="text-[10px] text-center text-muted-foreground">
             Your details stay secure. No spam, ever.

@@ -1,4 +1,5 @@
 const PRICE_PER_MILLION: Record<string, { input: number; output: number }> = {
+  "claude-haiku-4-5": { input: 1, output: 5 },
   "claude-3-5-sonnet": { input: 3, output: 15 },
   "claude-sonnet-4": { input: 3, output: 15 },
   "claude-opus-4": { input: 15, output: 75 },

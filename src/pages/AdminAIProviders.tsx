@@ -13,10 +13,11 @@ import { Badge } from "@/components/ui/badge";
 import { CSVTools } from "@/components/CSVTools";
 import { BlogAISettingsCard } from "@/components/admin/BlogAISettingsCard";
 import { AIUsageDashboard } from "@/components/admin/AIUsageDashboard";
+import { AIRuntimeControls } from "@/components/admin/AIRuntimeControls";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const MODEL_CATALOG: Record<string, string[]> = {
-  anthropic: ["claude-3-5-sonnet-latest", "claude-sonnet-4-20250514", "claude-opus-4-20250514", "claude-3-5-haiku-latest"],
+  anthropic: ["auto-haiku", "auto-sonnet", "claude-haiku-4-5", "claude-sonnet-4-5", "claude-opus-4-20250514"],
   gemini: ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"],
   openai: ["gpt-5", "gpt-4.1", "gpt-4.1-mini", "gpt-4o-mini"],
 };
@@ -162,6 +163,7 @@ export default function AdminAIProviders() {
   return (
     <AdminLayout title="AI Providers">
       <div className="mb-6"><AIUsageDashboard /></div>
+      <AIRuntimeControls />
       <BlogAISettingsCard />
       <div className="mb-4">
         <CSVTools table="ai_providers" filename="ai_providers.csv" columns="*" upsertKey="id" />
@@ -175,8 +177,8 @@ export default function AdminAIProviders() {
             <p className="font-semibold">How AI Provider Management Works</p>
             <ul className="list-disc pl-4 text-muted-foreground space-y-0.5">
               <li>Add your own provider (OpenAI, Gemini, Claude, Groq, OpenRouter, or any OpenAI-compatible API)</li>
-              <li>Enter the API key, base URL and default model - toggle ONE active at a time</li>
-              <li>The AI counselor will use whichever provider is currently active</li>
+              <li>Enter the API key, base URL and provider default model. Feature-specific routing is configured in the Runtime Control Centre above.</li>
+              <li>Diya chat uses Gemini; data cleaning and blog text use Claude; branded blog covers use OpenAI Images.</li>
             </ul>
           </div>
           <Button onClick={() => setShowAddForm(!showAddForm)} size="sm" className="rounded-xl gap-1">

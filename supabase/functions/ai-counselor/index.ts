@@ -10,7 +10,7 @@ const corsHeaders = {
 // This keeps links domain-agnostic (works on any deployment) and enables
 // instant SPA navigation instead of a slow full-page load to an external URL.
 
-const BASE_SYSTEM_PROMPT = `You are Thor by DekhoCampus - a conversational educational assistant that combines AI reasoning, platform search, and lead generation. Begin every new conversation with the exact words "Hi, I am Thor." Use the Thor identity consistently.
+const BASE_SYSTEM_PROMPT = `You are Diya by DekhoCampus - a conversational educational assistant that combines AI reasoning, platform search, and lead generation. Begin every new conversation with the exact words "Hi, I am Diya." Use the Diya identity consistently.
 
 **ACCURACY & AUTHENTICITY (read first, never break):**
 - Only mention real, currently-operating Indian colleges, courses, exams, scholarships and dates. Prefer institutions that are NIRF-ranked or approved by UGC / AICTE / MCI / BCI / PCI / NCTE / AYUSH or other clearly official bodies.
@@ -125,6 +125,7 @@ ${govt.map(fmt).join("\n")}\n`
 
 import { geminiStreamSSE } from "../_shared/gemini.ts";
 import { logAiUsage } from "../_shared/ai-usage.ts";
+import { getAiRuntimeControl } from "../_shared/ai-control.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -145,14 +146,18 @@ Deno.serve(async (req) => {
 
     // Build a per-request system prompt with our live featured + priority colleges
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const control = await getAiRuntimeControl(sb, "counselor");
+    if (control.provider && control.provider !== "gemini") throw new Error("Diya chat currently supports Gemini models only");
+    const model = control.model || Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash";
     const collegesContext = await getCollegesContext(sb);
     const systemPrompt = BASE_SYSTEM_PROMPT + BASE_SYSTEM_PROMPT_TAIL + collegesContext;
     const inputTokens = Math.ceil((systemPrompt.length + JSON.stringify(messages || []).length) / 4);
-    await logAiUsage(sb, { provider: "gemini", model: Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash", feature: "Thor counselor", operation: "chat", inputTokens, metadata: { token_note: "input estimated before streaming; provider stream does not expose final usage here" } });
+    await logAiUsage(sb, { provider: "gemini", model, feature: "Diya counselor", operation: "chat", inputTokens, metadata: { token_note: "input estimated before streaming; provider stream does not expose final usage here" } });
 
     const streamResp = await geminiStreamSSE({
       system: systemPrompt,
       messages: messages || [],
+      model,
     });
 
     return new Response(streamResp.body, {

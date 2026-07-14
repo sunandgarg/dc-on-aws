@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { generateBlogJson, loadBlogAiConfig, resolveClaudeTextModel, type BlogAiConfig } from "../_shared/blog-ai.ts";
 import { logAiUsage } from "../_shared/ai-usage.ts";
+import { applyClaudeRuntimeControl, getAiRuntimeControl } from "../_shared/ai-control.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -286,6 +287,7 @@ async function completeItem(admin: any, item: any, status: string, values: Recor
 }
 
 async function processItem(admin: any, config: BlogAiConfig, item: any) {
+  await getAiRuntimeControl(admin, "data-cleaner");
   const table = TABLES[item.entity_type];
   if (!table) return completeItem(admin, item, "failed", { error_message: "Unsupported content type" });
   await admin.from("data_cleaning_jobs").update({ current_entity: item.entity_type, current_name: item.entity_name, message: `Verifying ${item.entity_name}`, updated_at: new Date().toISOString() }).eq("id", item.job_id);
@@ -337,6 +339,7 @@ async function processTick(admin: any, serviceRole: string, functionUrl: string)
   console.log("[data-cleaner] tick started");
   const { data: settings } = await admin.from("data_cleaning_settings").select("worker_concurrency,scheduler_token").eq("id", "default").single();
   const config = await loadBlogAiConfig(admin, serviceRole);
+  await applyClaudeRuntimeControl(admin, "data-cleaner", config);
   console.log("[data-cleaner] AI configuration loaded");
   const { data: items, error } = await admin.rpc("claim_data_cleaning_items", { _limit: settings?.worker_concurrency || 2 });
   if (error) throw error;

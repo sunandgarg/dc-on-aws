@@ -24,27 +24,28 @@ function normalizeClaudeTextModel(value: string | null | undefined) {
   return LEGACY_CLAUDE_MODEL_IDS.has(model) ? DEFAULT_CLAUDE_TEXT_MODEL : model;
 }
 
-let resolvedClaudeModel = "";
+const resolvedClaudeModels = new Map<string, string>();
 
 export async function resolveClaudeTextModel(config: BlogAiConfig) {
-  if (resolvedClaudeModel) return resolvedClaudeModel;
+  if (resolvedClaudeModels.has(config.textModel)) return resolvedClaudeModels.get(config.textModel)!;
   const response = await fetch("https://api.anthropic.com/v1/models?limit=100", {
     headers: { "x-api-key": config.claudeKey, "anthropic-version": "2023-06-01" },
   });
   if (!response.ok) {
-    if (config.textModel !== "auto-sonnet") return config.textModel;
+    if (!config.textModel.startsWith("auto-")) return config.textModel;
     throw new Error(`Could not discover an available Claude model (${response.status}): ${(await response.text()).slice(0, 400)}`);
   }
   const payload = await response.json();
   const models = Array.isArray(payload?.data) ? payload.data : [];
   const requested = models.find((model: any) => model.id === config.textModel);
+  const family = config.textModel === "auto-haiku" ? "haiku" : "sonnet";
   const sonnet = models
-    .filter((model: any) => String(model.id || "").toLowerCase().includes("sonnet"))
+    .filter((model: any) => String(model.id || "").toLowerCase().includes(family))
     .sort((a: any, b: any) => String(b.created_at || b.id).localeCompare(String(a.created_at || a.id)))[0];
   const selected = requested || sonnet || models[0];
   if (!selected?.id) throw new Error("This Anthropic API key has no Claude models available. Check its workspace access and billing in Anthropic Console.");
-  resolvedClaudeModel = selected.id;
-  return resolvedClaudeModel;
+  resolvedClaudeModels.set(config.textModel, selected.id);
+  return selected.id;
 }
 
 async function cryptoKey(serviceRoleKey: string) {
