@@ -648,6 +648,112 @@
 /* Inline preview styling for doc-viewer blocks inside the rich-text editor.
    In the live article, this block is replaced with the React <DocumentViewer />. */
 @layer components {
+  .article-prose--news {
+    color: hsl(var(--foreground) / 0.92);
+  }
+
+  .article-prose--news p,
+  .article-prose--news li,
+  .article-prose--news blockquote {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(1rem, 0.95rem + 0.35vw, 1.14rem);
+    line-height: 1.9;
+    letter-spacing: 0.002em;
+  }
+
+  .article-prose--news p {
+    margin-block: 1.15rem;
+    color: hsl(215 20% 22%);
+  }
+
+  .article-prose--news h2,
+  .article-prose--news h3,
+  .article-prose--news h4 {
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    color: hsl(var(--foreground));
+    letter-spacing: -0.035em;
+  }
+
+  .article-prose--news h2 {
+    margin-top: 2.4rem;
+    margin-bottom: 1rem;
+    border-left-width: 4px;
+    padding-left: 0.8rem;
+    font-size: clamp(1.45rem, 1.2rem + 0.7vw, 2rem);
+    line-height: 1.18;
+  }
+
+  .article-prose--news h3 {
+    margin-top: 2rem;
+    margin-bottom: 0.8rem;
+    font-size: clamp(1.2rem, 1.08rem + 0.4vw, 1.55rem);
+    line-height: 1.25;
+  }
+
+  .article-prose--news strong {
+    color: hsl(var(--foreground));
+    font-weight: 800;
+  }
+
+  .article-prose--news a {
+    color: hsl(var(--primary));
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 0.18em;
+  }
+
+  .article-prose--news ul,
+  .article-prose--news ol {
+    margin-block: 1.25rem;
+    padding-left: 1.2rem;
+  }
+
+  .article-prose--news li {
+    margin-block: 0.55rem;
+    color: hsl(215 18% 24%);
+  }
+
+  .article-prose--news blockquote {
+    margin: 1.6rem 0;
+    border-left: 4px solid hsl(var(--primary));
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.06), hsl(var(--accent) / 0.05));
+    border-radius: 0 1rem 1rem 0;
+    padding: 1rem 1.1rem 1rem 1.25rem;
+    color: hsl(215 22% 20%);
+  }
+
+  .article-prose--news img {
+    width: 100%;
+    border-radius: 1.4rem;
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 18px 40px hsl(215 35% 12% / 0.08);
+  }
+
+  .article-prose--news .table-wrap {
+    margin: 1.6rem 0;
+    border-radius: 1rem;
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 10px 30px hsl(215 35% 12% / 0.06);
+  }
+
+  @media (max-width: 640px) {
+    .article-prose--news p,
+    .article-prose--news li,
+    .article-prose--news blockquote {
+      font-size: 1rem;
+      line-height: 1.82;
+    }
+
+    .article-prose--news h2 {
+      margin-top: 2rem;
+      font-size: 1.35rem;
+    }
+
+    .article-prose--news h3 {
+      margin-top: 1.7rem;
+      font-size: 1.12rem;
+    }
+  }
+
   .doc-viewer {
     display: block;
     border: 1px solid hsl(var(--border));

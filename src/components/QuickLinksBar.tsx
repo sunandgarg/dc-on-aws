@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   GraduationCap, BookOpen, FileText, Globe, Laptop, Calculator, Newspaper,
-  Award, Layers, Star, Image as ImageIcon, Compass, Sparkles, MapPin,
+  Layers, Star, Image as ImageIcon, Compass, Sparkles, MapPin,
   Briefcase, ShieldCheck, HelpCircle, Building2,
 } from "lucide-react";
 
@@ -19,7 +19,6 @@ const links: QL[] = [
   { icon: GraduationCap, label: "Top Colleges", href: "/colleges" },
   { icon: BookOpen, label: "Courses", href: "/courses" },
   { icon: FileText, label: "Exams", href: "/exams" },
-  { icon: Award, label: "Live Scholarships", sectionId: "live-scholarships" },
   { icon: Layers, label: "Explore by Category", sectionId: "explore-heading" },
   { icon: Star, label: "Featured Colleges", sectionId: "top-colleges-heading" },
   { icon: ImageIcon, label: "Recommended", sectionId: "recommended-colleges-heading" },

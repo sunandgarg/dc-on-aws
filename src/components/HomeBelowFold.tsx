@@ -1,6 +1,4 @@
 import { AlsoCheckSection } from "@/components/AlsoCheckSection";
-import { LiveScholarshipsStrip } from "@/components/LiveScholarshipsStrip";
-import { LiveNewsStrip } from "@/components/LiveNewsStrip";
 import { TopRankedColleges } from "@/components/TopRankedColleges";
 import { HeroBannerCarousel } from "@/components/HeroBannerCarousel";
 import { CategorySection } from "@/components/CategorySection";
@@ -27,7 +25,6 @@ import { PeriodicLeadPopup } from "@/components/PeriodicLeadPopup";
 export default function HomeBelowFold() {
   return <>
     <div className="container"><AlsoCheckSection variant="strip" /></div>
-    <div className="container"><div id="live-scholarships"><LiveScholarshipsStrip /></div><div id="live-news"><LiveNewsStrip /></div></div>
     <div className="container"><TopRankedColleges /></div>
     <div className="container"><HeroBannerCarousel /></div>
     <div className="container"><CategorySection /></div>

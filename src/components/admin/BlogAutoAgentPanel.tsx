@@ -199,7 +199,7 @@ export function BlogAutoAgentPanel({ onArticlesCreated }: { onArticlesCreated?: 
             <Badge variant={settings.enabled ? "default" : "secondary"}>{settings.enabled ? "Running" : "Paused"}</Badge>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Researches competitors plus DekhoCampus, uses Claude for original SEO/GEO/AEO articles, tags entities, generates branded OpenAI WebP covers, and publishes on schedule.
+            Researches competitors plus DekhoCampus, uses Claude for original SEO/GEO/AEO articles, tags entities, generates branded DekhoCampus editorial covers, and publishes on schedule.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

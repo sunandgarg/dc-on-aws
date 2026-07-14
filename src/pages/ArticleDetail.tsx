@@ -21,6 +21,7 @@ import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 import { useSEO } from "@/hooks/useSEO";
 import { DocumentViewer } from "@/components/detail/DocumentViewer";
+import { RichText } from "@/components/detail/RichText";
 
 // Heavy below-the-fold components - lazy loaded for faster initial paint
 const AlsoCheckSection = lazy(() => import("@/components/AlsoCheckSection").then(m => ({ default: m.AlsoCheckSection })));
@@ -324,50 +325,29 @@ export default function ArticleDetail() {
       </div>
 
       <main className="pb-28 sm:pb-16">
-        {/* Full-bleed editorial hero - Gen Z social-narrative reader */}
-        <div className="relative w-full bg-muted">
-          <div className="relative w-full h-[220px] sm:h-[340px] lg:h-[420px] overflow-hidden flex items-center justify-center">
-            <img
-              src={article.image}
-              alt={article.title}
-              className="max-w-full max-h-full w-auto h-auto object-contain"
-              fetchPriority="high"
-              decoding="async"
-            />
-            {/* Category chip */}
-            <Link
-              to={`/news?category=${encodeURIComponent(article.category)}`}
-              className="absolute top-4 left-4 sm:top-6 sm:left-6 inline-flex items-center bg-primary text-primary-foreground text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.15em] px-3 py-1.5 rounded-full shadow-lg z-10"
-            >
-              {article.category}
-            </Link>
-          </div>
-        </div>
-
         <div className="container max-w-6xl mx-auto px-4 sm:px-6 mt-4 sm:mt-6 relative">
           <div className="grid lg:grid-cols-12 gap-6 lg:gap-8">
             <article className="lg:col-span-8 min-w-0">
               <PageBreadcrumb items={[{ label: "News", href: "/news" }, { label: article.category, href: `/news?category=${encodeURIComponent(article.category)}` }, { label: article.title }]} />
 
-              {/* Listen pill - Gen Z audio affordance */}
-              <div className="mt-3 mb-4">
-                <button
-                  type="button"
-                  onClick={toggleListen}
-                  className="inline-flex items-center gap-2 bg-muted hover:bg-muted/80 text-foreground px-4 py-2 rounded-full text-[12px] sm:text-[13px] font-semibold transition active:scale-95"
-                >
-                  {isListening ? <Pause className="w-4 h-4 text-primary" /> : <Play className="w-4 h-4 text-primary fill-primary" />}
-                  {isListening ? "Pause" : "Listen to article"}
-                </button>
-              </div>
+              <Link
+                to={`/news?category=${encodeURIComponent(article.category)}`}
+                className="mt-4 inline-flex items-center rounded-full border border-primary/15 bg-primary/5 px-4 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.18em] text-primary"
+              >
+                {article.category}
+              </Link>
 
-              {/* Display headline - confident editorial scale */}
-              <h1 className="text-[26px] sm:text-[34px] lg:text-[40px] font-extrabold text-foreground leading-[1.08] tracking-tight mb-5 break-words">
+              <h1 className="mt-4 text-[29px] sm:text-[38px] lg:text-[50px] font-extrabold text-foreground leading-[1.06] tracking-[-0.04em] break-words">
                 {article.title}
               </h1>
 
-              {/* Author row with avatar + meta, single bordered band */}
-              <div className="flex items-center gap-3 pb-5 mb-6 border-b border-border">
+              {article.excerpt && (
+                <p className="mt-4 max-w-3xl text-[16px] sm:text-[18px] leading-[1.75] text-slate-600">
+                  {article.excerpt}
+                </p>
+              )}
+
+              <div className="mt-5 flex items-center gap-3 pb-5 mb-6 border-b border-border">
                 {article.author_id ? (
                   <AuthorByline authorId={article.author_id} fallbackName={article.author} />
                 ) : (
@@ -393,6 +373,29 @@ export default function ArticleDetail() {
                   aria-label={saved ? "Saved" : "Save article"}
                 >
                   <Bookmark className={`w-4 h-4 ${saved ? "fill-current" : ""}`} />
+                </button>
+              </div>
+
+              <figure className="mb-7 overflow-hidden rounded-[28px] border border-border bg-gradient-to-br from-slate-50 via-white to-orange-50 shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
+                <div className="aspect-[16/9] overflow-hidden">
+                  <img
+                    src={article.image}
+                    alt={article.title}
+                    className="h-full w-full object-cover object-center"
+                    fetchPriority="high"
+                    decoding="async"
+                  />
+                </div>
+              </figure>
+
+              <div className="mb-6">
+                <button
+                  type="button"
+                  onClick={toggleListen}
+                  className="inline-flex items-center gap-2 bg-muted hover:bg-muted/80 text-foreground px-4 py-2 rounded-full text-[12px] sm:text-[13px] font-semibold transition active:scale-95"
+                >
+                  {isListening ? <Pause className="w-4 h-4 text-primary" /> : <Play className="w-4 h-4 text-primary fill-primary" />}
+                  {isListening ? "Pause" : "Listen to article"}
                 </button>
               </div>
 
@@ -440,42 +443,33 @@ export default function ArticleDetail() {
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="article-prose prose prose-sm sm:prose-base max-w-none text-left text-foreground break-words
-                           prose-headings:text-foreground prose-headings:font-bold prose-headings:tracking-tight prose-headings:text-left
-                           prose-h2:text-[15px] sm:prose-h2:text-lg prose-h2:mt-5 prose-h2:mb-2 prose-h2:leading-[1.2]
-                           prose-h3:text-[14px] sm:prose-h3:text-base prose-h3:mt-4 prose-h3:mb-1.5 prose-h3:leading-[1.25]
-                           prose-p:text-foreground/90 prose-p:leading-[1.6] prose-p:text-[13.5px] sm:prose-p:text-[14.5px] prose-p:text-left
-                           prose-strong:text-foreground prose-strong:font-bold
-                           prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-a:break-words
-                           prose-ul:text-left prose-ol:text-left prose-ul:pl-5 prose-ol:pl-5
-                           prose-li:text-foreground/90 prose-li:leading-[1.6] prose-li:text-[13.5px] sm:prose-li:text-[14.5px]
-                           prose-blockquote:border-l-primary prose-blockquote:text-left
-                           prose-img:rounded-xl sm:prose-img:rounded-2xl
-                           prose-pre:overflow-x-auto"
+                className="space-y-5"
               >
                 {article.content?.trim().startsWith("<") ? (
                   contentSegments ? (
                     <>
                       {contentSegments.map((seg, i) =>
                         seg.type === "html" ? (
-                          <div key={i} dangerouslySetInnerHTML={{ __html: seg.value }} />
+                          <RichText key={i} html={seg.value} className="article-prose article-prose--news max-w-none" />
                         ) : (
                           <DocumentViewer key={i} title={seg.title} images={seg.images} />
                         )
                       )}
                     </>
                   ) : (
-                    <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+                    <RichText html={htmlContent} className="article-prose article-prose--news max-w-none" />
                   )
                 ) : (
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      h2: ({ children, ...props }) => <h2 id={slugifyHeading(String(children))} {...props}>{children}</h2>,
-                      h3: ({ children, ...props }) => <h3 id={slugifyHeading(String(children))} {...props}>{children}</h3>,
-                      table: ({ children, ...props }) => <div className="table-wrap"><table {...props}>{children}</table></div>,
-                    }}
-                  >{article.content}</ReactMarkdown>
+                  <div className="article-prose article-prose--news max-w-none">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        h2: ({ children, ...props }) => <h2 id={slugifyHeading(String(children))} {...props}>{children}</h2>,
+                        h3: ({ children, ...props }) => <h3 id={slugifyHeading(String(children))} {...props}>{children}</h3>,
+                        table: ({ children, ...props }) => <div className="table-wrap"><table {...props}>{children}</table></div>,
+                      }}
+                    >{article.content}</ReactMarkdown>
+                  </div>
                 )}
               </motion.div>
 

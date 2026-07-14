@@ -9,11 +9,9 @@ import {
   FileText,
   ClipboardList,
   Star,
-  Newspaper,
   MapPin,
   ArrowRight,
   Search,
-  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -65,6 +63,7 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [dbResults, setDbResults] = useState<SearchResult[]>([]);
+  const [headlineIndex, setHeadlineIndex] = useState(0);
   const navigate = useNavigate();
 
   // Admin-managed hero bar tiles (fallback to static if unavailable/empty)
@@ -113,6 +112,12 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
     const id = setInterval(() => setBgIndex((i) => (i + 1) % bgImages.length), rotationMs);
     return () => clearInterval(id);
   }, [bgImages.length, rotationMs]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const id = setInterval(() => setHeadlineIndex((i) => (i + 1) % 4), 2300);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -248,6 +253,7 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
   };
 
   const showDropdown = isFocused && searchQuery.trim().length >= 2 && dbResults.length > 0;
+  const rotatingWords = ["Future", "Career", "College", "Path"] as const;
 
   const getIcon = (item: SearchResult) => {
     if (item.type === "College") return GraduationCap;
@@ -378,12 +384,26 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
 
           {/* Primary promise */}
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <h1 className="max-w-3xl text-[40px] font-black leading-[1.04] tracking-[-0.045em] text-foreground sm:text-5xl md:text-[58px] lg:text-[64px]">
-              Your future deserves
-              <span className="block bg-gradient-to-r from-primary via-blue-600 to-accent bg-clip-text pb-1 text-transparent">the right choice.</span>
+            <h1 className="max-w-4xl text-[42px] font-black leading-[0.98] tracking-[-0.055em] text-foreground sm:text-[56px] md:text-[68px] lg:text-[84px]">
+              <span className="block">Discover Your Ideal</span>
+              <span className="relative mt-1 block min-h-[1.05em] text-primary">
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={rotatingWords[headlineIndex]}
+                    initial={{ opacity: 0, y: 18, filter: "blur(8px)" }}
+                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, y: -18, filter: "blur(8px)" }}
+                    transition={{ duration: 0.42, ease: "easeOut" }}
+                    className="absolute left-0 top-0 bg-gradient-to-r from-primary via-blue-600 to-primary bg-clip-text text-transparent"
+                  >
+                    {rotatingWords[headlineIndex]}
+                  </motion.span>
+                </AnimatePresence>
+                <span className="invisible">{rotatingWords[0]}</span>
+              </span>
             </h1>
-            <p className="mt-4 max-w-2xl text-sm font-medium leading-6 text-muted-foreground sm:text-base md:text-lg md:leading-7">
-              Compare verified colleges, fees and outcomes - then get a personalised plan from AI and real admission experts.
+            <p className="mt-5 max-w-2xl text-sm font-medium leading-6 text-slate-600 sm:text-base md:text-lg md:leading-8">
+              Search verified colleges, courses and exams, then move forward with clear guidance, transparent information and human support when you need it.
             </p>
           </motion.div>
 
@@ -497,7 +517,7 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
               ))}
               </div>
 
-            <div className="mt-5 grid max-w-xl grid-cols-3 divide-x divide-border/70 rounded-2xl border border-white/80 bg-white/55 px-2 py-3 shadow-sm backdrop-blur-md">
+            <div className="mt-5 hidden max-w-xl grid-cols-3 divide-x divide-border/70 rounded-2xl border border-white/80 bg-white/55 px-2 py-3 shadow-sm backdrop-blur-md md:grid">
               {[
                 ["13K+", "Colleges"],
                 ["840+", "Courses"],
@@ -523,7 +543,7 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
             transition={{ delay: 0.4 }}
             className="mx-auto mt-8 max-w-7xl px-4 pt-3 -mx-4 md:mx-0 md:px-0 lg:mt-10"
           >
-            <div className="flex md:grid md:grid-cols-6 gap-3 md:gap-5 overflow-x-auto md:overflow-visible scrollbar-hide snap-x snap-mandatory pb-1">
+            <div className="hidden md:grid md:grid-cols-6 gap-5 overflow-x-auto md:overflow-visible scrollbar-hide snap-x snap-mandatory pb-1">
               {quickCategories.map((cat, index) => (
                 <motion.a
                   key={cat.label}
@@ -544,7 +564,7 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
             </div>
           </motion.div>
 
-          <div className="mt-7 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/60 bg-border/60 shadow-sm sm:grid-cols-3 lg:grid-cols-6" aria-label="DekhoCampus trust markers">
+          <div className="mt-7 hidden md:grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/60 bg-border/60 shadow-sm md:grid-cols-3 lg:grid-cols-6" aria-label="DekhoCampus trust markers">
             {["13,000+ colleges", "1L+ students guided", "Verified fees", "AI + human guidance", "No agent markup", "Built for Bharat"].map((item) => (
               <div key={item} className="bg-card/90 px-3 py-3 text-center text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground backdrop-blur sm:text-[11px]">
                 {item}

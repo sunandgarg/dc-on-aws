@@ -258,7 +258,7 @@ export function AIGenerateDialog({ entityType, table, upsertKey = "slug", onDone
 
           <div className="p-6 space-y-5">
             {entityType === "articles" ? (
-              <div className="rounded-xl border bg-muted/40 p-3 text-sm"><b>Blog providers:</b> Claude generates text and OpenAI GPT Image generates branded WebP covers. Configure both under Admin - AI Providers.</div>
+              <div className="rounded-xl border bg-muted/40 p-3 text-sm"><b>Blog providers:</b> Claude generates text and OpenAI GPT Image powers the branded editorial cover backgrounds. Configure both under Admin - AI Providers.</div>
             ) : <div>
               <div className="flex items-center gap-2 mb-2">
                 <Cpu className="w-4 h-4 text-primary" />
