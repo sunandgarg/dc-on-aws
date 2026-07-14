@@ -14,6 +14,20 @@ function getKey(): string {
   return k;
 }
 
+async function assertGlobalAiEnabled() {
+  const url = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !serviceKey) return;
+  const response = await fetch(`${url}/rest/v1/ai_runtime_controls?feature=eq.global&select=is_enabled,stop_reason`, {
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+  });
+  if (!response.ok) return;
+  const rows = await response.json().catch(() => []);
+  if (rows?.[0]?.is_enabled === false) {
+    throw new Error(`AI_STOPPED: ${rows[0].stop_reason || "All AI calls are paused by an administrator"}`);
+  }
+}
+
 // Convert OpenAI-style messages -> Gemini contents + systemInstruction
 function toGeminiBody(opts: {
   system?: string;
@@ -53,6 +67,7 @@ export async function geminiGenerate(opts: {
   json?: boolean;
   model?: string;
 }): Promise<string> {
+  await assertGlobalAiEnabled();
   const model = opts.model || GEMINI_MODEL;
   const url = `${GEMINI_BASE}/models/${model}:generateContent`;
   const resp = await fetch(url, {
@@ -80,6 +95,7 @@ export async function geminiStreamSSE(opts: {
   prompt?: string;
   model?: string;
 }): Promise<Response> {
+  await assertGlobalAiEnabled();
   const model = opts.model || GEMINI_MODEL;
   const url = `${GEMINI_BASE}/models/${model}:streamGenerateContent?alt=sse`;
   const upstream = await fetch(url, {
