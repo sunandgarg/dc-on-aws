@@ -62,31 +62,42 @@ export type DbCollege = {
   is_partner?: boolean | null;
 };
 
+export type AdminCollegeListItem = Pick<DbCollege,
+  | "id" | "slug" | "name" | "short_name" | "location" | "city" | "state"
+  | "type" | "category" | "rating" | "reviews" | "courses_count" | "established"
+  | "image" | "logo" | "status" | "is_active" | "updated_at" | "priority"
+  | "featured_rank" | "affiliation_kind" | "is_partner"
+>;
+
+export type AdminCollegeListFilters = {
+  page: number;
+  pageSize: number;
+  search?: string;
+  status?: "all" | "Published" | "Draft";
+  category?: string;
+  state?: string;
+};
+
+const ADMIN_COLLEGE_LIST_SELECT = "id,slug,name,short_name,location,city,state,type,category,rating,reviews,courses_count,established,image,logo,status,is_active,updated_at,priority,featured_rank,affiliation_kind,is_partner";
+const PUBLIC_COLLEGE_CARD_SELECT = "id,slug,name,short_name,location,city,state,type,category,rating,reviews,courses_count,fees,image,logo,tags,established,approvals,naac_grade,is_active,status,priority,priority_updated_at,featured_rank,affiliation_kind,parent_university_slug,is_partner";
+
 const COLLEGE_PAGE_SIZE = 1000;
 
 async function fetchActiveColleges(): Promise<DbCollege[]> {
-  const colleges: DbCollege[] = [];
+  const { data, error } = await supabase
+    .from("colleges")
+    .select(PUBLIC_COLLEGE_CARD_SELECT)
+    .eq("is_active", true)
+    .order("priority", { ascending: true, nullsFirst: false })
+    .order("featured_rank", { ascending: true, nullsFirst: false })
+    .order("priority_updated_at", { ascending: false })
+    .order("rating", { ascending: false, nullsFirst: false })
+    .order("name", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(100);
 
-  for (let from = 0; ; from += COLLEGE_PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("colleges")
-      .select("*")
-      .eq("is_active", true)
-      .order("priority", { ascending: true, nullsFirst: false })
-      .order("featured_rank", { ascending: true, nullsFirst: false })
-      .order("priority_updated_at", { ascending: false })
-      .order("rating", { ascending: false })
-      .order("name", { ascending: true })
-      .order("id", { ascending: true })
-      .range(from, from + COLLEGE_PAGE_SIZE - 1);
-
-    if (error) throw error;
-    const page = (data ?? []) as DbCollege[];
-    colleges.push(...page);
-    if (page.length < COLLEGE_PAGE_SIZE) break;
-  }
-
-  return colleges;
+  if (error) throw error;
+  return (data ?? []) as unknown as DbCollege[];
 }
 
 async function fetchAllColleges(): Promise<DbCollege[]> {
@@ -123,7 +134,10 @@ export function useDbColleges() {
       //   4. rating desc
       return fetchActiveColleges();
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 
@@ -132,6 +146,67 @@ export function useAllDbColleges() {
     queryKey: ["db-colleges-all"],
     queryFn: fetchAllColleges,
     staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useAdminCollegeList(filters: AdminCollegeListFilters) {
+  const page = Math.max(1, filters.page);
+  const pageSize = Math.max(10, Math.min(100, filters.pageSize));
+  const search = (filters.search ?? "").trim().replace(/[,%()]/g, " ").replace(/\s+/g, " ");
+
+  return useQuery({
+    queryKey: ["admin-colleges-list-v2", page, pageSize, search, filters.status ?? "all", filters.category ?? "", filters.state ?? ""],
+    queryFn: async () => {
+      let query = supabase
+        .from("colleges")
+        .select(ADMIN_COLLEGE_LIST_SELECT, { count: "exact" });
+
+      if (filters.status && filters.status !== "all") query = query.eq("status", filters.status);
+      if (filters.category) query = query.eq("category", filters.category);
+      if (filters.state) query = query.eq("state", filters.state);
+      if (search) {
+        query = query.or(`name.ilike.%${search}%,slug.ilike.%${search}%,city.ilike.%${search}%,state.ilike.%${search}%`);
+      }
+
+      const from = (page - 1) * pageSize;
+      const { data, error, count } = await query
+        .order("priority", { ascending: true, nullsFirst: false })
+        .order("featured_rank", { ascending: true, nullsFirst: false })
+        .order("updated_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+
+      if (error) throw error;
+      return { rows: (data ?? []) as AdminCollegeListItem[], total: count ?? 0 };
+    },
+    placeholderData: (previous) => previous,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useAdminCollegeStats() {
+  return useQuery({
+    queryKey: ["admin-colleges-stats-v2"],
+    queryFn: async () => {
+      const [total, published, draft, active, inactive] = await Promise.all([
+        supabase.from("colleges").select("id", { count: "exact", head: true }),
+        supabase.from("colleges").select("id", { count: "exact", head: true }).eq("status", "Published"),
+        supabase.from("colleges").select("id", { count: "exact", head: true }).eq("status", "Draft"),
+        supabase.from("colleges").select("id", { count: "exact", head: true }).eq("is_active", true),
+        supabase.from("colleges").select("id", { count: "exact", head: true }).eq("is_active", false),
+      ]);
+      const failed = [total, published, draft, active, inactive].find((result) => result.error);
+      if (failed?.error) throw failed.error;
+      return {
+        total: total.count ?? 0,
+        published: published.count ?? 0,
+        draft: draft.count ?? 0,
+        active: active.count ?? 0,
+        inactive: inactive.count ?? 0,
+      };
+    },
+    staleTime: 30 * 1000,
+    refetchOnMount: "always",
   });
 }
 
@@ -259,7 +334,7 @@ export function useSaveCollege() {
       // status, etc.) reflect everywhere without a hard refresh.
       qc.invalidateQueries({ predicate: (q) => {
         const k = q.queryKey?.[0];
-        return typeof k === "string" && (k.startsWith("db-college") || k.startsWith("infinite-college") || k === "featured-colleges");
+        return typeof k === "string" && (k.startsWith("db-college") || k.startsWith("admin-colleges") || k.startsWith("infinite-college") || k === "featured-colleges");
       }});
       toast.success("College saved!");
     },
@@ -277,7 +352,7 @@ export function useDeleteCollege() {
     onSuccess: () => {
       qc.invalidateQueries({ predicate: (q) => {
         const k = q.queryKey?.[0];
-        return typeof k === "string" && (k.startsWith("db-college") || k.startsWith("infinite-college") || k === "featured-colleges");
+        return typeof k === "string" && (k.startsWith("db-college") || k.startsWith("admin-colleges") || k.startsWith("infinite-college") || k === "featured-colleges");
       }});
       toast.success("College deleted!");
     },

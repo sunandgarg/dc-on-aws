@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +52,9 @@ export default function AllColleges() {
   const location = useLocation();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Parse SEO slug from URL like /colleges/top-btech-colleges-in-delhi
   const seoSlugFilters = useMemo(() => {
@@ -100,7 +102,36 @@ export default function AllColleges() {
 
   useCanonical();
 
-  const { data: colleges = [], isLoading } = useCollegeDirectory();
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const serverCategories = useMemo(
+    () => resolveFacetCategories(selectedStreams, selectedCourseGroups),
+    [selectedStreams, selectedCourseGroups],
+  );
+  const directoryFilters = useMemo(() => ({
+    search: debouncedSearch,
+    categories: serverCategories,
+    state: selectedState,
+    city: selectedCity,
+    types: selectedTypes,
+    approvals: selectedApprovals,
+    naacGrades: selectedNaac,
+  }), [debouncedSearch, serverCategories, selectedState, selectedCity, selectedTypes, selectedApprovals, selectedNaac]);
+  const {
+    data: directoryPages,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    error: directoryError,
+  } = useCollegeDirectory(directoryFilters);
+  const colleges = useMemo(
+    () => directoryPages?.pages.flatMap((page) => page) ?? [],
+    [directoryPages],
+  );
 
   // Update URL to SEO slug format
   useEffect(() => {
@@ -150,10 +181,10 @@ export default function AllColleges() {
 
   const cities = selectedState ? (locations?.citiesByState[selectedState] || []) : [];
 
-  // The master directory is fetched once with card/facet fields only. All
-  // checkbox changes and type-ahead search below are in-memory operations.
+  // Exact filters/search are applied by Supabase before each 50-card page is
+  // transferred. Course/exam synonyms remain a cheap final client-side pass.
   const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = debouncedSearch.toLowerCase();
     const categories = resolveFacetCategories(selectedStreams, selectedCourseGroups);
     const courseTerms = getCourseGroupSearchTerms(selectedCourseGroups).map((term) => term.toLowerCase());
     return colleges.filter((c: any) => {
@@ -169,7 +200,20 @@ export default function AllColleges() {
       const matchExam = !selectedExams.length || selectedExams.some((exam) => text.includes(exam.toLowerCase()));
       return matchSearch && matchCategory && matchCourse && matchState && matchCity && matchType && matchApproval && matchNaac && matchExam;
     });
-  }, [colleges, search, selectedStreams, selectedCourseGroups, selectedState, selectedCity, selectedTypes, selectedApprovals, selectedNaac, selectedExams]);
+  }, [colleges, debouncedSearch, selectedStreams, selectedCourseGroups, selectedState, selectedCity, selectedTypes, selectedApprovals, selectedNaac, selectedExams]);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || !hasNextPage) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isFetchingNextPage) void fetchNextPage();
+      },
+      { rootMargin: "500px 0px" },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   // SEO-optimized heading
   const heading = useMemo(() => getCollegeHeading({
@@ -223,7 +267,7 @@ export default function AllColleges() {
         <PageBreadcrumb items={[{ label: "Colleges" }]} />
         <header className="mb-4">
           <h1 className="text-xl md:text-2xl font-bold text-primary mb-1">{heading}</h1>
-          <p className="text-sm text-muted-foreground">Showing {filtered.length}+ top colleges - compare fees, placements, rankings & more</p>
+          <p className="text-sm text-muted-foreground">Top-ranked colleges load first. More results appear as you scroll.</p>
         </header>
 
         <AlsoCheckSection variant="strip" className="mb-4" />
@@ -275,15 +319,35 @@ export default function AllColleges() {
           </aside>
 
           <div className="flex-1 min-w-0">
-            <p className="text-sm text-muted-foreground mb-3">Showing <span className="font-semibold text-foreground">{filtered.length}</span> colleges</p>
+            <p className="text-sm text-muted-foreground mb-3">
+              Showing <span className="font-semibold text-foreground">{filtered.length}</span> loaded colleges
+              {debouncedSearch ? ` matching “${debouncedSearch}”` : ""}
+            </p>
             <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3 content-visibility-auto">
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => <CollegeCardSkeleton key={i} />)
               ) : (
-                filtered.slice(0, 60).map((college: any, index: number) => <CollegeCard key={college.id} college={college} index={index} />)
+                filtered.map((college: any, index: number) => <CollegeCard key={college.id} college={college} index={index} />)
               )}
             </div>
-            {!isLoading && filtered.length > 60 && <p className="text-center text-sm text-muted-foreground py-4">Showing the first 60 of {filtered.length} local results. Narrow filters to refine instantly.</p>}
+            {directoryError && (
+              <p className="text-center text-sm text-destructive py-5">Colleges could not be loaded. Please retry.</p>
+            )}
+            {!isLoading && !directoryError && filtered.length === 0 && (
+              <p className="text-center text-sm text-muted-foreground py-8">No colleges match these filters yet.</p>
+            )}
+            <div ref={loadMoreRef} className="flex justify-center py-5 min-h-16">
+              {hasNextPage && (
+                <button
+                  type="button"
+                  onClick={() => void fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  className="rounded-xl border border-primary/25 bg-card px-5 py-2 text-sm font-semibold text-primary hover:bg-primary/5 disabled:opacity-60"
+                >
+                  {isFetchingNextPage ? "Loading next colleges…" : "Load 50 more colleges"}
+                </button>
+              )}
+            </div>
 
             {/* Empty state intentionally renders blank grid (filters remain visible on the left) */}
             <div className="mt-6">
