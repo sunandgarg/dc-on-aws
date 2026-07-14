@@ -18,7 +18,7 @@ import { MobileBottomFilter } from "@/components/MobileBottomFilter";
 import { useInfiniteData } from "@/hooks/useInfiniteData";
 import { getCourseHeading, courseSeoRoutes } from "@/lib/seoSlugs";
 import { useSEO } from "@/hooks/useSEO";
-import { parseCourseSlug, filtersToSlug } from "@/lib/seoSlugRoutes";
+import { parseCourseSlug } from "@/lib/seoSlugRoutes";
 import { useCanonical } from "@/hooks/useCanonical";
 import { getCourseGroupSearchTerms, normalizeCourseGroup, readMultiParam, resolveFacetCategories, uniqueValues, writeMultiParam } from "@/lib/listingFilters";
 import { useSearchParams, Link, useLocation, useNavigate } from "react-router-dom";
@@ -34,6 +34,7 @@ export default function AllCourses() {
   const location = useLocation();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
 
   const seoSlugFilters = useMemo(() => {
@@ -50,37 +51,42 @@ export default function AllCourses() {
   const [selectedCourseGroups, setSelectedCourseGroups] = useState<string[]>(() => {
     return readMultiParam(searchParams, "group", seoSlugFilters.group ? [normalizeCourseGroup(seoSlugFilters.group)] : []).map(normalizeCourseGroup);
   });
-  const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>([]);
+  const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>(() => readMultiParam(searchParams, "specialization"));
   const [selectedModes, setSelectedModes] = useState<string[]>(() => readMultiParam(searchParams, "mode", seoSlugFilters.mode ? [seoSlugFilters.mode] : []));
-  const [selectedDurations, setSelectedDurations] = useState<string[]>([]);
+  const [selectedDurations, setSelectedDurations] = useState<string[]>(() => readMultiParam(searchParams, "duration"));
 
   // Hydrate from URL whenever it changes
   useEffect(() => {
     setSelectedStreams(readMultiParam(searchParams, "stream", seoSlugFilters.stream ? [seoSlugFilters.stream] : []));
     setSelectedCourseGroups(readMultiParam(searchParams, "group", seoSlugFilters.group ? [normalizeCourseGroup(seoSlugFilters.group)] : []).map(normalizeCourseGroup));
     setSelectedModes(readMultiParam(searchParams, "mode", seoSlugFilters.mode ? [seoSlugFilters.mode] : []));
+    setSelectedSpecializations(readMultiParam(searchParams, "specialization"));
+    setSelectedDurations(readMultiParam(searchParams, "duration"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search]);
 
   useCanonical();
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
   const dbFilters = useMemo(() => {
     const f: Record<string, string | string[] | undefined> = {};
     const categories = resolveFacetCategories(selectedStreams, selectedCourseGroups);
     if (categories.length > 0) f.category = categories.length === 1 ? categories[0] : categories;
-    if (selectedModes.length > 0) f.mode = selectedModes.length === 1 ? selectedModes[0] : selectedModes;
+    if (selectedModes.length > 0) {
+      const modes = uniqueValues(selectedModes.flatMap((mode) => mode === "Full Time" ? ["Full Time", "Full-Time"] : mode === "Part Time" ? ["Part Time", "Part-Time"] : [mode]));
+      f.mode = modes.length === 1 ? modes[0] : modes;
+    }
+    if (selectedDurations.length > 0) f.duration = selectedDurations.length === 1 ? selectedDurations[0] : selectedDurations;
     return f;
-  }, [selectedStreams, selectedCourseGroups, selectedModes]);
-
-  // When user picks a course group like "M.Sc", search course name for it.
-  const effectiveSearch = useMemo(() => {
-    if (search) return search;
-    return undefined;
-  }, [search]);
+  }, [selectedStreams, selectedCourseGroups, selectedModes, selectedDurations]);
 
   const courseGroupSearch = useMemo(() => getCourseGroupSearchTerms(selectedCourseGroups), [selectedCourseGroups]);
 
-  const { items: courses, sentinelRef, isLoading, isFetchingMore, hasMore } = useInfiniteData({
+  const { items: courses, sentinelRef, isLoading, isFetchingMore, hasMore, error: coursesError } = useInfiniteData({
     table: "courses",
     queryKey: ["infinite-courses"],
     orderBy: "priority",
@@ -90,49 +96,26 @@ export default function AllCourses() {
       { column: "name", ascending: true },
     ],
     filters: dbFilters,
-    search: effectiveSearch,
+    arrayFilters: { specializations: selectedSpecializations },
+    search: debouncedSearch || undefined,
     searchGroups: courseGroupSearch.length > 0 ? [{ terms: courseGroupSearch, fields: ["name", "full_name", "category", "level", "description"] }] : [],
     searchFields: ["name", "full_name", "category", "mode", "level"],
   });
 
   useEffect(() => {
-    const useQueryUrl = [selectedStreams, selectedCourseGroups, selectedModes].some((v) => v.length > 1) || (selectedStreams.length > 0 && selectedCourseGroups.length > 0);
-
-    if (useQueryUrl) {
-      const params = new URLSearchParams();
-      writeMultiParam(params, "stream", selectedStreams);
-      writeMultiParam(params, "group", selectedCourseGroups);
-      writeMultiParam(params, "mode", selectedModes);
-      const newPath = params.toString() ? `/courses?${params.toString()}` : "/courses";
-      if (`${location.pathname}${location.search}` !== newPath) navigate(newPath, { replace: true });
-      return;
-    }
-
-    const filters: Record<string, string> = {};
-    if (selectedCourseGroups.length === 1) filters.group = selectedCourseGroups[0];
-    else if (selectedStreams.length === 1) filters.stream = selectedStreams[0];
-    if (selectedModes.length === 1) filters.mode = selectedModes[0];
-
-    const hasFilters = Object.keys(filters).length > 0;
-    if (hasFilters) {
-      const slug = filtersToSlug("courses", filters);
-      const newPath = `/courses/${slug}`;
-      if (`${location.pathname}${location.search}` !== newPath) navigate(newPath, { replace: true });
-    } else if (`${location.pathname}${location.search}` !== "/courses") {
-      navigate("/courses", { replace: true });
-    }
-  }, [selectedStreams, selectedCourseGroups, selectedModes, navigate, location.pathname, location.search]);
+    const params = new URLSearchParams();
+    writeMultiParam(params, "stream", selectedStreams);
+    writeMultiParam(params, "group", selectedCourseGroups);
+    writeMultiParam(params, "specialization", selectedSpecializations);
+    writeMultiParam(params, "mode", selectedModes);
+    writeMultiParam(params, "duration", selectedDurations);
+    const newPath = params.toString() ? `/courses?${params.toString()}` : "/courses";
+    if (`${location.pathname}${location.search}` !== newPath) navigate(newPath, { replace: true });
+  }, [selectedStreams, selectedCourseGroups, selectedSpecializations, selectedModes, selectedDurations, navigate, location.pathname, location.search]);
 
   const activeFilters = uniqueValues([...selectedStreams, ...selectedCourseGroups, ...selectedSpecializations, ...selectedModes, ...selectedDurations]);
 
-  const filtered = useMemo(() => {
-    // Course group is wired into the server-side `effectiveSearch` (ilike on name).
-    // Only secondary client filter remaining is duration.
-    return courses.filter((c: any) => {
-      const matchDuration = selectedDurations.length === 0 || selectedDurations.includes(c.duration);
-      return matchDuration;
-    });
-  }, [courses, selectedDurations]);
+  const filtered = useMemo(() => courses, [courses]);
 
   const heading = useMemo(() => getCourseHeading({
     courseGroup: selectedCourseGroups[0],
@@ -249,6 +232,8 @@ export default function AllCourses() {
             </div>
 
             <div ref={sentinelRef} className="h-4" />
+            {coursesError && <p className="text-center text-sm text-destructive py-5">Courses could not be loaded. Please retry.</p>}
+            {!isLoading && !coursesError && filtered.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">No courses match these filters.</p>}
             {isFetchingMore && (
               <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
             )}

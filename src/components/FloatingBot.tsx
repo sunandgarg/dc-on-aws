@@ -196,7 +196,12 @@ export function FloatingBot() {
             className="fixed bottom-20 lg:bottom-6 right-4 md:right-6 z-50 flex flex-col items-center gap-1 rounded-2xl bg-transparent hover:scale-105 transition-transform active:scale-95"
             aria-label="Ask iKi - AI education counselor"
           >
-            <span className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-gradient-to-br from-primary to-blue-700 shadow-[0_12px_36px_-10px_rgba(37,99,235,.75)]"><img src={aiBotLogo} alt="" className="w-10 h-10 object-contain" /><span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-accent text-[9px] text-accent-foreground font-black flex items-center justify-center">AI</span></span>
+            <span className="relative h-14 w-14">
+              <span className="flex h-14 w-14 overflow-hidden rounded-full bg-gradient-to-br from-primary to-blue-700 shadow-[0_12px_36px_-10px_rgba(37,99,235,.75)]">
+                <img src={aiBotLogo} alt="" className="h-full w-full rounded-full object-cover" />
+              </span>
+              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[9px] font-black text-accent-foreground">AI</span>
+            </span>
             <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-extrabold text-primary shadow-md ring-1 ring-slate-200">Ask iKi</span>
           </motion.button>
         )}

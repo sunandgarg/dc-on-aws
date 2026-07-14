@@ -65,7 +65,7 @@ export function HomeMobileBottomNav() {
                   key={item.label}
                   onClick={() => {
                     // Trigger floating bot
-                    const botBtn = document.querySelector('[aria-label="Talk to AI Counselor"]') as HTMLButtonElement;
+                    const botBtn = document.querySelector('[aria-label="Ask iKi - AI education counselor"]') as HTMLButtonElement;
                     if (botBtn) botBtn.click();
                   }}
                   className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors text-primary"

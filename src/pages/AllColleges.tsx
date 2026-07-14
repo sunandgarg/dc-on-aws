@@ -18,7 +18,7 @@ import { FilterAccordionGroup } from "@/components/FilterAccordion";
 import { useCollegeDirectory } from "@/hooks/useCollegeDirectory";
 import { getCollegeHeading, collegeSeoRoutes } from "@/lib/seoSlugs";
 import { useSEO } from "@/hooks/useSEO";
-import { parseCollegeSlug, filtersToSlug } from "@/lib/seoSlugRoutes";
+import { parseCollegeSlug } from "@/lib/seoSlugRoutes";
 import { useCanonical } from "@/hooks/useCanonical";
 import {
   getCourseGroupSearchTerms,
@@ -38,6 +38,31 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 
 const collegeApprovals = ["AICTE", "UGC", "NAAC", "MCI", "BCI", "AACSB"] as const;
 const collegeNaacGrades = ["A++", "A+", "A", "B++", "B+"] as const;
+
+function feeBoundsInLakhs(value: unknown) {
+  const text = String(value ?? "");
+  const fallbackUnit = /crore|\bcr\b/i.test(text) ? "crore" : /lakh|lac/i.test(text) ? "lakh" : "";
+  const amounts = Array.from(text.matchAll(/(\d[\d,]*(?:\.\d+)?)\s*(crore|cr|lakh|lakhs|lac|lacs)?/gi))
+    .map((match) => {
+      const amount = Number(match[1].replace(/,/g, ""));
+      const unit = (match[2] || fallbackUnit).toLowerCase();
+      if (!Number.isFinite(amount)) return Number.NaN;
+      if (unit === "crore" || unit === "cr") return amount * 100;
+      if (unit.startsWith("la")) return amount;
+      return amount >= 1_000 ? amount / 100_000 : amount;
+    })
+    .filter(Number.isFinite);
+  return amounts.length ? { min: Math.min(...amounts), max: Math.max(...amounts) } : null;
+}
+
+function feeRangeMatches(value: unknown, range: string) {
+  const bounds = feeBoundsInLakhs(value);
+  if (!bounds) return false;
+  if (range === "Less than 1 Lakh") return bounds.min < 1;
+  if (range === "Above 25 Lakh") return bounds.max > 25;
+  const [low, high] = range.match(/[0-9]+/g)?.map(Number) ?? [];
+  return Number.isFinite(low) && Number.isFinite(high) && bounds.max >= low && bounds.min <= high;
+}
 
 /**
  * AllColleges - College listing page with:
@@ -70,13 +95,13 @@ export default function AllColleges() {
   });
   const [selectedState, setSelectedState] = useState(() => searchParams.get("state") || seoSlugFilters.state || "");
   const [selectedCity, setSelectedCity] = useState(() => searchParams.get("city") || seoSlugFilters.city || "");
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(() => seoSlugFilters.type ? [seoSlugFilters.type] : []);
-  const [selectedApprovals, setSelectedApprovals] = useState<string[]>([]);
-  const [selectedNaac, setSelectedNaac] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(() => readMultiParam(searchParams, "type", seoSlugFilters.type ? [seoSlugFilters.type] : []));
+  const [selectedApprovals, setSelectedApprovals] = useState<string[]>(() => readMultiParam(searchParams, "approval"));
+  const [selectedNaac, setSelectedNaac] = useState<string[]>(() => readMultiParam(searchParams, "naac"));
   const [selectedCourseGroups, setSelectedCourseGroups] = useState<string[]>(() => {
     return readMultiParam(searchParams, "group", seoSlugFilters.group ? [normalizeCollegeCourseGroup(seoSlugFilters.group)] : []).map(normalizeCollegeCourseGroup);
   });
-  const [selectedFeeRanges, setSelectedFeeRanges] = useState<string[]>([]);
+  const [selectedFeeRanges, setSelectedFeeRanges] = useState<string[]>(() => readMultiParam(searchParams, "fee"));
   const [selectedExams, setSelectedExams] = useState<string[]>(() => {
     return readMultiParam(searchParams, "exam");
   });
@@ -88,13 +113,16 @@ export default function AllColleges() {
     const group = readMultiParam(searchParams, "group", seoSlugFilters.group ? [normalizeCollegeCourseGroup(seoSlugFilters.group)] : []).map(normalizeCollegeCourseGroup);
     const st = searchParams.get("state") || seoSlugFilters.state || "";
     const ci = searchParams.get("city") || seoSlugFilters.city || "";
-    const ty = seoSlugFilters.type;
+    const ty = readMultiParam(searchParams, "type", seoSlugFilters.type ? [seoSlugFilters.type] : []);
     const ex = readMultiParam(searchParams, "exam");
     setSelectedStreams(stream);
     setSelectedCourseGroups(group);
     setSelectedState(st);
     setSelectedCity(ci);
-    setSelectedTypes(ty ? [ty] : []);
+    setSelectedTypes(ty);
+    setSelectedApprovals(readMultiParam(searchParams, "approval"));
+    setSelectedNaac(readMultiParam(searchParams, "naac"));
+    setSelectedFeeRanges(readMultiParam(searchParams, "fee"));
     setSelectedExams(ex);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search]);
@@ -133,43 +161,22 @@ export default function AllColleges() {
     [directoryPages],
   );
 
-  // Update URL to SEO slug format
+  // Keep every filter in the URL. This is intentionally lossless: converting
+  // arbitrary values to a limited SEO slug used to clear unsupported filters.
   useEffect(() => {
-    const multiFilterCount = [selectedStreams, selectedCourseGroups, selectedTypes, selectedExams].filter((v) => v.length > 1).length;
-    const useQueryUrl = multiFilterCount > 0 || (selectedStreams.length > 0 && selectedCourseGroups.length > 0);
-
-    if (useQueryUrl) {
-      const params = new URLSearchParams();
-      writeMultiParam(params, "stream", selectedStreams);
-      writeMultiParam(params, "group", selectedCourseGroups);
-      writeMultiParam(params, "type", selectedTypes);
-      writeMultiParam(params, "exam", selectedExams);
-      if (selectedState) params.set("state", selectedState);
-      if (selectedCity) params.set("city", selectedCity);
-      const newPath = params.toString() ? `/colleges?${params.toString()}` : "/colleges";
-      if (`${location.pathname}${location.search}` !== newPath) navigate(newPath, { replace: true });
-      return;
-    }
-
-    const filters: Record<string, string> = {};
-    if (selectedCourseGroups.length === 1) filters.group = selectedCourseGroups[0];
-    else if (selectedStreams.length === 1) filters.stream = selectedStreams[0];
-    if (selectedCity) filters.city = selectedCity;
-    if (selectedState) filters.state = selectedState;
-    if (selectedTypes.length === 1) filters.type = selectedTypes[0];
-    if (selectedExams.length === 1) filters.exam = selectedExams[0];
-
-    const hasFilters = Object.keys(filters).length > 0;
-    if (hasFilters) {
-      const slug = filtersToSlug("colleges", filters);
-      const newPath = `/colleges/${slug}`;
-      if (`${location.pathname}${location.search}` !== newPath) {
-        navigate(newPath, { replace: true });
-      }
-    } else if (`${location.pathname}${location.search}` !== "/colleges") {
-      navigate("/colleges", { replace: true });
-    }
-  }, [selectedStreams, selectedCourseGroups, selectedState, selectedCity, selectedTypes, selectedExams, navigate, location.pathname, location.search]);
+    const params = new URLSearchParams();
+    writeMultiParam(params, "stream", selectedStreams);
+    writeMultiParam(params, "group", selectedCourseGroups);
+    writeMultiParam(params, "type", selectedTypes);
+    writeMultiParam(params, "approval", selectedApprovals);
+    writeMultiParam(params, "naac", selectedNaac);
+    writeMultiParam(params, "fee", selectedFeeRanges);
+    writeMultiParam(params, "exam", selectedExams);
+    if (selectedState) params.set("state", selectedState);
+    if (selectedCity) params.set("city", selectedCity);
+    const newPath = params.toString() ? `/colleges?${params.toString()}` : "/colleges";
+    if (`${location.pathname}${location.search}` !== newPath) navigate(newPath, { replace: true });
+  }, [selectedStreams, selectedCourseGroups, selectedState, selectedCity, selectedTypes, selectedApprovals, selectedNaac, selectedFeeRanges, selectedExams, navigate, location.pathname, location.search]);
 
   const activeFilters = uniqueValues([
     ...selectedStreams, ...selectedTypes, ...selectedApprovals,
@@ -197,10 +204,11 @@ export default function AllColleges() {
       const matchType = !selectedTypes.length || selectedTypes.includes(c.type);
       const matchApproval = selectedApprovals.length === 0 || selectedApprovals.some(a => c.approvals?.includes(a));
       const matchNaac = selectedNaac.length === 0 || selectedNaac.includes(c.naac_grade);
+      const matchFee = selectedFeeRanges.length === 0 || selectedFeeRanges.some((range) => feeRangeMatches(c.fees, range));
       const matchExam = !selectedExams.length || selectedExams.some((exam) => text.includes(exam.toLowerCase()));
-      return matchSearch && matchCategory && matchCourse && matchState && matchCity && matchType && matchApproval && matchNaac && matchExam;
+      return matchSearch && matchCategory && matchCourse && matchState && matchCity && matchType && matchApproval && matchNaac && matchFee && matchExam;
     });
-  }, [colleges, debouncedSearch, selectedStreams, selectedCourseGroups, selectedState, selectedCity, selectedTypes, selectedApprovals, selectedNaac, selectedExams]);
+  }, [colleges, debouncedSearch, selectedStreams, selectedCourseGroups, selectedState, selectedCity, selectedTypes, selectedApprovals, selectedNaac, selectedFeeRanges, selectedExams]);
 
   useEffect(() => {
     const target = loadMoreRef.current;

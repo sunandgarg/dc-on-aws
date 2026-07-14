@@ -6,7 +6,7 @@
  * The sentinel element triggers the next fetch at 300px margin.
  */
 import { useRef, useEffect } from "react";
-import { useInfiniteQuery, keepPreviousData } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { SearchGroup } from "@/lib/listingFilters";
 
@@ -21,6 +21,7 @@ interface InfiniteConfig {
   /** Additional ORDER BY clauses applied after the primary `orderBy`. */
   extraOrders?: { column: string; ascending?: boolean; nullsFirst?: boolean }[];
   filters?: Record<string, string | string[] | undefined>;
+  arrayFilters?: Record<string, string[] | undefined>;
   search?: string;
   searchFields?: string[];
   searchGroups?: SearchGroup[];
@@ -35,6 +36,7 @@ export function useInfiniteData({
   nullsFirst,
   extraOrders = [],
   filters = {},
+  arrayFilters = {},
   search,
   searchFields = ["name"],
   searchGroups = [],
@@ -49,11 +51,11 @@ export function useInfiniteData({
       ascending,
       nullsFirst,
       JSON.stringify(filters),
+      JSON.stringify(arrayFilters),
       search ?? "",
       JSON.stringify(searchGroups),
       JSON.stringify(extraOrders),
     ],
-    placeholderData: keepPreviousData,
     queryFn: async ({ pageParam = 0 }) => {
       let q: any = supabase
         .from(table)
@@ -73,6 +75,12 @@ export function useInfiniteData({
         } else if (typeof value === "string" && value) {
           q = q.eq(key, value);
         }
+      }
+
+      // Postgres array columns (for example course specializations) need an
+      // overlap operation rather than scalar IN semantics.
+      for (const [key, value] of Object.entries(arrayFilters)) {
+        if (value?.length) q = q.overlaps(key, value);
       }
 
       // Apply search
@@ -128,5 +136,6 @@ export function useInfiniteData({
     isLoading: query.isLoading,
     isFetchingMore: query.isFetchingNextPage,
     hasMore: query.hasNextPage ?? false,
+    error: query.error,
   };
 }

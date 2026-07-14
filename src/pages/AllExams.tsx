@@ -18,7 +18,7 @@ import { MobileBottomFilter } from "@/components/MobileBottomFilter";
 import { useInfiniteData } from "@/hooks/useInfiniteData";
 import { getExamHeading, examSeoRoutes } from "@/lib/seoSlugs";
 import { useSEO } from "@/hooks/useSEO";
-import { parseExamSlug, filtersToSlug } from "@/lib/seoSlugRoutes";
+import { parseExamSlug } from "@/lib/seoSlugRoutes";
 import { useCanonical } from "@/hooks/useCanonical";
 import { getCourseGroupSearchTerms, normalizeCollegeCourseGroup, readMultiParam, resolveFacetCategories, uniqueValues, writeMultiParam } from "@/lib/listingFilters";
 import { useSearchParams, Link, useLocation, useNavigate } from "react-router-dom";
@@ -33,6 +33,7 @@ export default function AllExams() {
   const location = useLocation();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
 
   const seoSlugFilters = useMemo(() => {
@@ -62,6 +63,11 @@ export default function AllExams() {
 
   useCanonical();
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
   const dbFilters = useMemo(() => {
     const f: Record<string, string | string[] | undefined> = {};
     const categories = resolveFacetCategories(selectedStreams, selectedCourseGroups);
@@ -73,7 +79,7 @@ export default function AllExams() {
 
   const courseGroupSearch = useMemo(() => getCourseGroupSearchTerms(selectedCourseGroups), [selectedCourseGroups]);
 
-  const { items: exams, sentinelRef, isLoading, isFetchingMore, hasMore } = useInfiniteData({
+  const { items: exams, sentinelRef, isLoading, isFetchingMore, hasMore, error: examsError } = useInfiniteData({
     table: "exams",
     queryKey: ["infinite-exams"],
     orderBy: "priority",
@@ -83,39 +89,19 @@ export default function AllExams() {
       { column: "name", ascending: true },
     ],
     filters: dbFilters,
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     searchGroups: courseGroupSearch.length > 0 ? [{ terms: courseGroupSearch, fields: ["name", "full_name", "category", "exam_type"] }] : [],
     searchFields: ["name", "full_name", "category", "exam_type", "level"],
   });
 
   useEffect(() => {
-    const useQueryUrl = [selectedStreams, selectedCategories, selectedCourseGroups, selectedLevels].some((v) => v.length > 1) || (selectedStreams.length > 0 && selectedCourseGroups.length > 0);
-
-    if (useQueryUrl) {
-      const params = new URLSearchParams();
-      writeMultiParam(params, "category", selectedCategories);
-      writeMultiParam(params, "stream", selectedStreams);
-      writeMultiParam(params, "group", selectedCourseGroups);
-      writeMultiParam(params, "level", selectedLevels);
-      const newPath = params.toString() ? `/exams?${params.toString()}` : "/exams";
-      if (`${location.pathname}${location.search}` !== newPath) navigate(newPath, { replace: true });
-      return;
-    }
-
-    const filters: Record<string, string> = {};
-    if (selectedCourseGroups.length === 1) filters.group = selectedCourseGroups[0];
-    else if (selectedStreams.length === 1) filters.stream = selectedStreams[0];
-    if (selectedLevels.length === 1) filters.level = selectedLevels[0];
-    if (selectedCategories.length === 1) filters.category = selectedCategories[0];
-
-    const hasFilters = Object.keys(filters).length > 0;
-    if (hasFilters) {
-      const slug = filtersToSlug("exams", filters);
-      const newPath = `/exams/${slug}`;
-      if (`${location.pathname}${location.search}` !== newPath) navigate(newPath, { replace: true });
-    } else if (`${location.pathname}${location.search}` !== "/exams") {
-      navigate("/exams", { replace: true });
-    }
+    const params = new URLSearchParams();
+    writeMultiParam(params, "category", selectedCategories);
+    writeMultiParam(params, "stream", selectedStreams);
+    writeMultiParam(params, "group", selectedCourseGroups);
+    writeMultiParam(params, "level", selectedLevels);
+    const newPath = params.toString() ? `/exams?${params.toString()}` : "/exams";
+    if (`${location.pathname}${location.search}` !== newPath) navigate(newPath, { replace: true });
   }, [selectedStreams, selectedCategories, selectedCourseGroups, selectedLevels, navigate, location.pathname, location.search]);
 
   const activeFilters = uniqueValues([...selectedCategories, ...selectedStreams, ...selectedCourseGroups, ...selectedLevels]);
@@ -237,6 +223,8 @@ export default function AllExams() {
             </div>
 
             <div ref={sentinelRef} className="h-4" />
+            {examsError && <p className="text-center text-sm text-destructive py-5">Exams could not be loaded. Please retry.</p>}
+            {!isLoading && !examsError && filtered.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">No exams match these filters.</p>}
             {isFetchingMore && (
               <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
             )}
