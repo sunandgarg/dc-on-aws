@@ -40,13 +40,32 @@ const STREAMS = [
 export function MegaMenu() {
   const { data } = useMegaMenuData();
   const [open, setOpen] = useState<string | null>(null);
+  const [panelTop, setPanelTop] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(null); };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
+
+  const positionPanel = (label: string) => {
+    const trigger = triggerRefs.current[label];
+    if (trigger) setPanelTop(trigger.getBoundingClientRect().bottom + 10);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const update = () => positionPanel(open);
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [open]);
 
   const byCat = (arr: any[], cat: string) => arr.filter((x: any) => (x.category || "").toLowerCase() === cat.toLowerCase());
   const byState = (arr: any[]) => {
@@ -251,7 +270,7 @@ export function MegaMenu() {
         const Icon = iconFor(s.label);
         const active = open === s.label;
         return (
-          <div key={s.label} onMouseLeave={() => active && setOpen(null)}>
+          <div key={s.label}>
             {!s.columns && s.href ? (
               <Link
                 to={s.href}
@@ -262,8 +281,9 @@ export function MegaMenu() {
               </Link>
             ) : (
               <button
-                onMouseEnter={() => open && setOpen(s.label)}
-                onClick={() => setOpen(active ? null : s.label)}
+                ref={(node) => { triggerRefs.current[s.label] = node; }}
+                onMouseEnter={() => { if (open) { positionPanel(s.label); setOpen(s.label); } }}
+                onClick={() => { if (active) setOpen(null); else { positionPanel(s.label); setOpen(s.label); } }}
                 className={`flex items-center gap-1 px-2.5 py-2 text-sm font-medium rounded-xl transition-colors ${active ? "bg-primary/10 text-primary" : "text-foreground/80 hover:text-foreground hover:bg-secondary"}`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -277,7 +297,8 @@ export function MegaMenu() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 6 }}
-                  className={`absolute left-[50vw] top-full z-[80] mt-3 grid max-h-[min(72vh,620px)] max-w-[calc(100vw-2rem)] -translate-x-1/2 origin-top gap-4 overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] sm:gap-5 sm:p-5 xl:p-6 ${menuGridClass(s.columns.length)}`}
+                  style={{ top: panelTop }}
+                  className={`fixed left-1/2 z-[80] grid max-h-[min(72vh,620px)] max-w-[calc(100vw-2rem)] -translate-x-1/2 origin-top gap-4 overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] sm:gap-5 sm:p-5 xl:p-6 ${menuGridClass(s.columns.length)}`}
                 >
                   {s.columns.map((col, i) => (
                     <div key={i} className="min-w-0 rounded-2xl bg-slate-50/90 p-3.5 ring-1 ring-inset ring-slate-100 sm:p-4">
