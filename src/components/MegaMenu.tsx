@@ -45,9 +45,11 @@ export function MegaMenu() {
   const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(null); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
+    const h = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(null);
+    };
+    document.addEventListener("pointerdown", h);
+    return () => document.removeEventListener("pointerdown", h);
   }, []);
 
   const positionPanel = (label: string) => {
@@ -264,6 +266,8 @@ export function MegaMenu() {
       ? "w-[min(94vw,1180px)] grid-cols-4"
       : "w-[min(90vw,980px)] grid-cols-3";
 
+  const activeSection = open ? sections.find((section) => section.label === open) : undefined;
+
   return (
     <nav ref={ref} className="relative hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
       {sections.map((s) => {
@@ -281,9 +285,17 @@ export function MegaMenu() {
               </Link>
             ) : (
               <button
+                type="button"
                 ref={(node) => { triggerRefs.current[s.label] = node; }}
-                onMouseEnter={() => { if (open) { positionPanel(s.label); setOpen(s.label); } }}
-                onClick={() => { if (active) setOpen(null); else { positionPanel(s.label); setOpen(s.label); } }}
+                aria-expanded={active}
+                aria-haspopup="menu"
+                onPointerEnter={() => { if (open && !active) { positionPanel(s.label); setOpen(s.label); } }}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (active) setOpen(null);
+                  else { positionPanel(s.label); setOpen(s.label); }
+                }}
                 className={`flex items-center gap-1 px-2.5 py-2 text-sm font-medium rounded-xl transition-colors ${active ? "bg-primary/10 text-primary" : "text-foreground/80 hover:text-foreground hover:bg-secondary"}`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -291,44 +303,47 @@ export function MegaMenu() {
                 <ChevronDown className={`w-3 h-3 transition ${active ? "rotate-180" : ""}`} />
               </button>
             )}
-            <AnimatePresence>
-              {active && s.columns && (
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 6 }}
-                  onMouseDown={(event) => event.stopPropagation()}
-                  style={{ top: panelTop }}
-                  className={`fixed left-1/2 z-[80] grid max-h-[min(72vh,620px)] max-w-[calc(100vw-2rem)] -translate-x-1/2 origin-top gap-4 overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] sm:gap-5 sm:p-5 xl:p-6 ${menuGridClass(s.columns.length)}`}
-                >
-                  {s.columns.map((col, i) => (
-                    <div key={i} className="min-w-0 rounded-2xl bg-slate-50/90 p-3.5 ring-1 ring-inset ring-slate-100 sm:p-4">
-                      <p className="mb-3 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.13em] text-primary"><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />{col.title}</p>
-                      <ul className="space-y-0.5">
-                        {col.items.map((it) => (
-                          <li key={it.label + it.href}>
-                            <Link
-                              to={it.href}
-                              onClick={() => setOpen(null)}
-                              className="group flex min-h-9 items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-[13px] font-medium leading-5 text-slate-700 transition hover:bg-white hover:text-primary hover:shadow-sm sm:text-sm"
-                            >
-                              <span className="truncate">{it.label}</span><span className="opacity-0 transition group-hover:opacity-100">→</span>
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                  <div className="col-span-full flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
-                    <div><p className="text-sm font-extrabold text-slate-900">Explore with confidence</p><p className="text-xs text-slate-500">Verified colleges, courses, exams and decision tools in one place.</p></div>
-                    {s.href && <Link to={s.href} onClick={() => setOpen(null)} className="rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground shadow-lg shadow-primary/20">View all {s.label} →</Link>}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         );
       })}
+      <AnimatePresence initial={false}>
+        {activeSection?.columns && (
+          <motion.div
+            key={activeSection.label}
+            role="menu"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            onPointerDown={(event) => event.stopPropagation()}
+            style={{ top: panelTop }}
+            className={`fixed left-1/2 z-[80] grid max-h-[min(72vh,620px)] max-w-[calc(100vw-2rem)] -translate-x-1/2 origin-top gap-4 overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] sm:gap-5 sm:p-5 xl:p-6 ${menuGridClass(activeSection.columns.length)}`}
+          >
+            {activeSection.columns.map((col, i) => (
+              <div key={i} className="min-w-0 rounded-2xl bg-slate-50/90 p-3.5 ring-1 ring-inset ring-slate-100 sm:p-4">
+                <p className="mb-3 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.13em] text-primary"><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />{col.title}</p>
+                <ul className="space-y-0.5">
+                  {col.items.map((it) => (
+                    <li key={it.label + it.href}>
+                      <Link
+                        role="menuitem"
+                        to={it.href}
+                        onClick={() => setOpen(null)}
+                        className="group flex min-h-9 items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-[13px] font-medium leading-5 text-slate-700 transition hover:bg-white hover:text-primary hover:shadow-sm sm:text-sm"
+                      >
+                        <span className="truncate">{it.label}</span><span className="opacity-0 transition group-hover:opacity-100">→</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+            <div className="col-span-full flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+              <div><p className="text-sm font-extrabold text-slate-900">Explore with confidence</p><p className="text-xs text-slate-500">Verified colleges, courses, exams and decision tools in one place.</p></div>
+              {activeSection.href && <Link to={activeSection.href} onClick={() => setOpen(null)} className="rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground shadow-lg shadow-primary/20">View all {activeSection.label} →</Link>}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   );
 }
