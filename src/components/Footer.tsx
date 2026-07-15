@@ -75,10 +75,9 @@ export function Footer() {
           >
             <LeadCaptureForm
               variant="banner"
-              title="🎯 Get Expert College Counseling - Free!"
-              subtitle="Our counselors have helped 50,000+ students find their dream college"
+              title="🎓 Get Personalized College Recommendations"
+              subtitle="Talk to our expert counselors - completely free"
               source="footer_banner"
-              simple
             />
           </motion.div>
         </div>

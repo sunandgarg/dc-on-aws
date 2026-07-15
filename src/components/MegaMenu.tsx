@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { ChevronDown, GraduationCap, BookOpen, FileText, Briefcase, Stethoscope, Palette, Sparkles, Trophy, Scale, Award, NotebookPen, Newspaper } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -292,11 +293,12 @@ export function MegaMenu() {
               </button>
             )}
             <AnimatePresence>
-              {active && s.columns && (
+              {active && s.columns && createPortal(
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 6 }}
+                  onMouseDown={(event) => event.stopPropagation()}
                   style={{ top: panelTop }}
                   className={`fixed left-1/2 z-[80] grid max-h-[min(72vh,620px)] max-w-[calc(100vw-2rem)] -translate-x-1/2 origin-top gap-4 overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] sm:gap-5 sm:p-5 xl:p-6 ${menuGridClass(s.columns.length)}`}
                 >
@@ -322,7 +324,8 @@ export function MegaMenu() {
                     <div><p className="text-sm font-extrabold text-slate-900">Explore with confidence</p><p className="text-xs text-slate-500">Verified colleges, courses, exams and decision tools in one place.</p></div>
                     {s.href && <Link to={s.href} onClick={() => setOpen(null)} className="rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground shadow-lg shadow-primary/20">View all {s.label} →</Link>}
                   </div>
-                </motion.div>
+                </motion.div>,
+                document.body,
               )}
             </AnimatePresence>
           </div>
