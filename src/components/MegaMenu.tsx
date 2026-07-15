@@ -236,8 +236,14 @@ export function MegaMenu() {
     return Sparkles;
   };
 
+  // Keep the panel centred in the viewport rather than in the nav's own width.
+  // This prevents the right-most column being clipped on wide menus (especially
+  // Courses, Study Material and CAT Universe) while retaining a safe gutter on
+  // smaller laptop screens.
   const menuGridClass = (columns: number) =>
-    columns >= 4 ? "w-[min(88vw,1040px)] grid-cols-4" : "w-[min(82vw,860px)] grid-cols-3";
+    columns >= 4
+      ? "w-[min(94vw,1180px)] grid-cols-4"
+      : "w-[min(90vw,980px)] grid-cols-3";
 
   return (
     <nav ref={ref} className="relative hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
@@ -271,18 +277,18 @@ export function MegaMenu() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 6 }}
-                  className={`absolute left-1/2 top-full z-[80] mt-3 grid max-h-[min(72vh,620px)] max-w-[calc(100vw-3rem)] -translate-x-1/2 origin-top gap-5 overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] xl:p-6 ${menuGridClass(s.columns.length)}`}
+                  className={`absolute left-[50vw] top-full z-[80] mt-3 grid max-h-[min(72vh,620px)] max-w-[calc(100vw-2rem)] -translate-x-1/2 origin-top gap-4 overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] sm:gap-5 sm:p-5 xl:p-6 ${menuGridClass(s.columns.length)}`}
                 >
                   {s.columns.map((col, i) => (
-                    <div key={i} className="min-w-0 rounded-2xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-100">
-                      <p className="mb-3 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.13em] text-primary"><span className="h-1.5 w-1.5 rounded-full bg-accent" />{col.title}</p>
-                      <ul className="space-y-1">
+                    <div key={i} className="min-w-0 rounded-2xl bg-slate-50/90 p-3.5 ring-1 ring-inset ring-slate-100 sm:p-4">
+                      <p className="mb-3 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.13em] text-primary"><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />{col.title}</p>
+                      <ul className="space-y-0.5">
                         {col.items.map((it) => (
                           <li key={it.label + it.href}>
                             <Link
                               to={it.href}
                               onClick={() => setOpen(null)}
-                              className="group flex min-h-9 items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-white hover:text-primary hover:shadow-sm"
+                              className="group flex min-h-9 items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-[13px] font-medium leading-5 text-slate-700 transition hover:bg-white hover:text-primary hover:shadow-sm sm:text-sm"
                             >
                               <span className="truncate">{it.label}</span><span className="opacity-0 transition group-hover:opacity-100">→</span>
                             </Link>
