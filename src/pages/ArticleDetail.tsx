@@ -325,12 +325,12 @@ export default function ArticleDetail() {
       </div>
 
       <main className="pb-28 sm:pb-16">
-        <div className="container max-w-6xl mx-auto px-4 sm:px-6 mt-4 sm:mt-6 relative">
+        <div className="container max-w-7xl mx-auto px-4 sm:px-6 mt-4 sm:mt-6 relative">
           <div className="grid lg:grid-cols-12 gap-6 lg:gap-8">
             <article className="lg:col-span-8 min-w-0">
               <PageBreadcrumb items={[{ label: "News", href: "/news" }, { label: article.category, href: `/news?category=${encodeURIComponent(article.category)}` }, { label: article.title }]} />
 
-              <figure className="mb-7 overflow-hidden rounded-[30px] border border-border bg-gradient-to-br from-slate-50 via-white to-orange-50 shadow-[0_28px_70px_rgba(15,23,42,0.1)]">
+              <figure className="mb-6 overflow-hidden rounded-[24px] border border-border bg-gradient-to-br from-slate-50 via-white to-orange-50 shadow-[0_22px_55px_rgba(15,23,42,0.09)]">
                 <div className="aspect-[16/8.7] overflow-hidden bg-slate-100">
                   <img
                     src={article.image}
@@ -349,7 +349,7 @@ export default function ArticleDetail() {
                 {article.category}
               </Link>
 
-              <h1 className="mt-4 max-w-5xl text-[22px] sm:text-[32px] lg:text-[42px] xl:text-[46px] font-extrabold text-foreground leading-[1.08] lg:leading-[1.06] tracking-[-0.035em] sm:tracking-[-0.04em] break-words text-balance">
+              <h1 className="mt-4 max-w-5xl text-[22px] sm:text-[32px] lg:text-[38px] xl:text-[42px] font-extrabold text-foreground leading-[1.1] break-words text-balance">
                 {article.title}
               </h1>
 
@@ -490,11 +490,11 @@ export default function ArticleDetail() {
               </div>
             </article>
 
-            <aside className="lg:col-span-4 space-y-5">
-              <div className="lg:sticky lg:top-20 space-y-5">
-                <div className="hidden lg:block rounded-[28px] border border-border bg-gradient-to-br from-white via-slate-50 to-orange-50 p-5 shadow-sm">
+            <aside className="lg:col-span-4 space-y-8">
+              <div className="lg:sticky lg:top-20">
+                <div className="hidden lg:block rounded-[24px] border border-border bg-gradient-to-br from-white via-slate-50 to-orange-50 p-5 shadow-sm">
                   <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-primary">Get expert support</p>
-                  <h3 className="mt-2 text-2xl font-extrabold tracking-[-0.03em] text-foreground">Need help after reading this update?</h3>
+                  <h3 className="mt-2 text-xl font-extrabold leading-tight text-foreground">Need help after reading this update?</h3>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">Speak to a DekhoCampus counsellor for personalised next steps on colleges, exams, counselling and admissions.</p>
                   <div className="mt-4 rounded-2xl border border-white/70 bg-white/90 p-3 shadow-sm">
                     <LeadCaptureForm
@@ -506,8 +506,10 @@ export default function ArticleDetail() {
                     />
                   </div>
                 </div>
+              </div>
 
-                <div className="hidden lg:block rounded-[28px] border border-border bg-card p-5 shadow-sm">
+              <div className="hidden lg:block space-y-5 pt-[58vh]">
+                <div className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
                   <div className="mb-4 flex items-center justify-between">
                     <div>
                       <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-muted-foreground">Stay on this topic</p>

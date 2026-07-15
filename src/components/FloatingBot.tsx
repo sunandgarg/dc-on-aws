@@ -192,16 +192,16 @@ export function FloatingBot() {
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
             onClick={handleOpen}
-            className="fixed bottom-20 lg:bottom-6 right-4 md:right-6 z-50 flex flex-col items-center gap-1 rounded-2xl bg-transparent hover:scale-105 transition-transform active:scale-95"
+            className="fixed bottom-20 lg:bottom-6 right-3 md:right-6 z-50 flex flex-col items-center gap-0.5 rounded-2xl bg-transparent hover:scale-105 transition-transform active:scale-95"
             aria-label="Ask Diya - AI education counselor"
           >
-              <span className="relative h-14 w-14">
-                <span className="flex h-14 w-14 overflow-hidden rounded-full bg-gradient-to-br from-primary to-blue-700 shadow-[0_12px_36px_-10px_rgba(37,99,235,.75)]">
+              <span className="relative h-12 w-12 md:h-14 md:w-14">
+                <span className="flex h-12 w-12 md:h-14 md:w-14 overflow-hidden rounded-full bg-gradient-to-br from-primary to-blue-700 shadow-[0_12px_36px_-10px_rgba(37,99,235,.75)]">
                 <img src={diyaAiLogo} alt="" className="h-full w-full rounded-full object-cover" />
                 </span>
-              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[9px] font-black text-accent-foreground">AI</span>
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 md:h-5 md:w-5 items-center justify-center rounded-full bg-accent text-[8px] md:text-[9px] font-black text-accent-foreground">AI</span>
             </span>
-            <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-extrabold text-primary shadow-md ring-1 ring-slate-200">Ask Diya</span>
+            <span className="rounded-full bg-white/95 px-2 py-0.5 text-[10px] md:px-2.5 md:py-1 md:text-[11px] font-extrabold text-primary shadow-md ring-1 ring-slate-200">Ask Diya</span>
           </motion.button>
         )}
       </AnimatePresence>

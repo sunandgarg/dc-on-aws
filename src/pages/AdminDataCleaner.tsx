@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Check, CheckCheck, CirclePause, CirclePlay, Clock3, DatabaseZap, ExternalLink, Eye, Loader2, Search, ShieldCheck, Trash2, X } from "lucide-react";
+import { Bot, Check, CheckCheck, CirclePause, CirclePlay, Clock3, DatabaseZap, ExternalLink, Eye, Loader2, Search, ShieldCheck, Trash2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const ENTITY_OPTIONS = [
@@ -27,6 +28,21 @@ const ENTITY_OPTIONS = [
 ] as const;
 
 const terminalStatuses = new Set(["completed", "cancelled", "failed"]);
+
+const CLEANER_MODELS: Record<string, Array<{ value: string; label: string }>> = {
+  anthropic: [
+    { value: "auto-haiku", label: "Claude Haiku - cheaper review pass" },
+    { value: "auto-sonnet", label: "Claude Sonnet - deeper official research" },
+    { value: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
+    { value: "claude-sonnet-4-5", label: "Claude Sonnet 4.5" },
+  ],
+  gemini: [
+    { value: "gemini-3.5-flash", label: "Gemini 3.5 Flash" },
+    { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+    { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
+    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+  ],
+};
 
 async function invokeCleaner(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke("admin-data-cleaner", { body });
@@ -61,6 +77,25 @@ export default function AdminDataCleaner() {
   const [excludeType, setExcludeType] = useState("colleges");
   const [excludeSearch, setExcludeSearch] = useState("");
   const [previewItem, setPreviewItem] = useState<any | null>(null);
+
+  const cleanerRuntime = useQuery({
+    queryKey: ["ai-runtime-control", "data-cleaner"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("ai_runtime_controls")
+        .select("*")
+        .eq("feature", "data-cleaner")
+        .maybeSingle();
+      if (error) throw error;
+      return data || {
+        feature: "data-cleaner",
+        display_name: "Clean Data",
+        is_enabled: true,
+        provider: "anthropic",
+        model: "auto-haiku",
+      };
+    },
+  });
 
   const counts = useQuery({
     queryKey: ["data-cleaner-counts"],
@@ -131,6 +166,27 @@ export default function AdminDataCleaner() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const updateRuntime = useMutation({
+    mutationFn: async (values: Record<string, unknown>) => {
+      const payload = {
+        feature: "data-cleaner",
+        display_name: "Clean Data",
+        is_enabled: true,
+        ...values,
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = await (supabase as any)
+        .from("ai_runtime_controls")
+        .upsert(payload, { onConflict: "feature" });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["ai-runtime-control", "data-cleaner"] });
+      toast.success("Clean Data AI model saved");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const start = async () => {
     if (!selectedTypes.length) return toast.error("Select at least one content type");
     try {
@@ -166,6 +222,9 @@ export default function AdminDataCleaner() {
   const remainingSeconds = Math.max(0, (activeJob?.total_items - activeJob?.processed_items) * rate);
   const currentBatch = activeJob ? Math.min(Math.ceil(Math.max(1, activeJob.processed_items + 1) / activeJob.batch_size), Math.max(1, Math.ceil(activeJob.total_items / activeJob.batch_size))) : 1;
   const totalBatches = activeJob ? Math.max(1, Math.ceil(activeJob.total_items / activeJob.batch_size)) : 1;
+  const cleanerProvider = cleanerRuntime.data?.provider || "anthropic";
+  const cleanerModels = CLEANER_MODELS[cleanerProvider] || CLEANER_MODELS.anthropic;
+  const cleanerModel = cleanerRuntime.data?.model || cleanerModels[0]?.value;
 
   return (
     <AdminLayout title="Clean Data - Official Source AI">
@@ -187,6 +246,42 @@ export default function AdminDataCleaner() {
           <Card className="rounded-3xl">
             <CardHeader><CardTitle>1. Choose content</CardTitle></CardHeader>
             <CardContent className="space-y-5">
+              <div className="rounded-2xl border bg-muted/30 p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-primary" />
+                  <div>
+                    <p className="text-sm font-bold">AI model for this cleaner</p>
+                    <p className="text-xs text-muted-foreground">Claude is better for official-source reasoning. Gemini is cheaper for fast passes.</p>
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Provider</Label>
+                    <Select
+                      value={cleanerProvider}
+                      onValueChange={(provider) => updateRuntime.mutate({ provider, model: CLEANER_MODELS[provider]?.[0]?.value || null })}
+                    >
+                      <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="anthropic">Claude</SelectItem>
+                        <SelectItem value="gemini">Google Gemini</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Model</Label>
+                    <Select
+                      value={cleanerModel}
+                      onValueChange={(model) => updateRuntime.mutate({ model })}
+                    >
+                      <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {cleanerModels.map((model) => <SelectItem key={model.value} value={model.value}>{model.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                 {ENTITY_OPTIONS.map((entity) => {
                   const checked = selectedTypes.includes(entity.id);

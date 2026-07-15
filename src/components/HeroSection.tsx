@@ -518,13 +518,6 @@ export function HeroSection({ onOpenChat }: HeroSectionProps) {
             </div>
           </motion.div>
 
-          <div className="mt-7 hidden md:grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/60 bg-border/60 shadow-sm md:grid-cols-3 lg:grid-cols-6" aria-label="DekhoCampus trust markers">
-            {["13,000+ colleges", "1L+ students guided", "Verified fees", "AI + human guidance", "No agent markup", "Built for Bharat"].map((item) => (
-              <div key={item} className="bg-card/90 px-3 py-3 text-center text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground backdrop-blur sm:text-[11px]">
-                {item}
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </section>

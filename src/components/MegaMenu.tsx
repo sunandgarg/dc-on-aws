@@ -236,12 +236,8 @@ export function MegaMenu() {
     return Sparkles;
   };
 
-  const dropdownAlignment = (label: string) => {
-    if (label === "Colleges" || label === "Courses" || label === "Exams") {
-      return "left-0 translate-x-0 origin-top-left";
-    }
-    return "right-0 translate-x-0 origin-top-right";
-  };
+  const menuGridClass = (columns: number) =>
+    columns >= 4 ? "w-[min(88vw,1040px)] grid-cols-4" : "w-[min(82vw,860px)] grid-cols-3";
 
   return (
     <nav ref={ref} className="relative hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
@@ -249,7 +245,7 @@ export function MegaMenu() {
         const Icon = iconFor(s.label);
         const active = open === s.label;
         return (
-          <div key={s.label} className="relative" onMouseLeave={() => active && setOpen(null)}>
+          <div key={s.label} onMouseLeave={() => active && setOpen(null)}>
             {!s.columns && s.href ? (
               <Link
                 to={s.href}
@@ -260,7 +256,7 @@ export function MegaMenu() {
               </Link>
             ) : (
               <button
-                onMouseEnter={() => setOpen(s.label)}
+                onMouseEnter={() => open && setOpen(s.label)}
                 onClick={() => setOpen(active ? null : s.label)}
                 className={`flex items-center gap-1 px-2.5 py-2 text-sm font-medium rounded-xl transition-colors ${active ? "bg-primary/10 text-primary" : "text-foreground/80 hover:text-foreground hover:bg-secondary"}`}
               >
@@ -275,7 +271,7 @@ export function MegaMenu() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 6 }}
-                  className={`absolute top-full z-[80] mt-3 grid max-h-[min(72vh,620px)] max-w-[calc(100vw-3rem)] gap-5 overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] xl:p-6 ${dropdownAlignment(s.label)} ${s.columns.length === 4 ? "w-[min(94vw,1080px)] grid-cols-4" : "w-[min(90vw,900px)] grid-cols-3"}`}
+                  className={`absolute left-1/2 top-full z-[80] mt-3 grid max-h-[min(72vh,620px)] max-w-[calc(100vw-3rem)] -translate-x-1/2 origin-top gap-5 overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] xl:p-6 ${menuGridClass(s.columns.length)}`}
                 >
                   {s.columns.map((col, i) => (
                     <div key={i} className="min-w-0 rounded-2xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-100">
