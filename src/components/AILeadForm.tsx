@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { X, Send, Loader2, User, Mail, BookOpen, MapPin, ShieldCheck } from "lucide-react";
-import dcLogo from "@/assets/dc-logo.png";
+import diyaAiLogo from "@/assets/diya-ai-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/SearchableSelect";
@@ -135,7 +135,7 @@ export function AILeadForm({ isOpen, onClose, onSubmit }: AILeadFormProps) {
         {/* Header - warm & personal */}
         <div className="bg-gradient-to-r from-primary to-blue-700 px-5 py-4 flex items-center justify-between rounded-t-[27px]">
           <div className="flex items-center gap-3">
-            <img src={dcLogo} alt="DekhoCampus" className="w-10 h-10 object-contain rounded-full bg-primary-foreground/20 p-1" />
+            <img src={diyaAiLogo} alt="Diya AI" className="w-10 h-10 object-contain rounded-full bg-primary-foreground/20 p-1" />
             <div>
               <h3 className="font-bold text-primary-foreground">Start with Diya</h3>
               <p className="text-[11px] text-primary-foreground/90">Three quick details for personalised guidance</p>

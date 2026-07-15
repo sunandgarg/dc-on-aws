@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Send, Bot, User, Loader2 } from "lucide-react";
-import dcLogo from "@/assets/dc-logo.png";
-import aiBotLogo from "@/assets/ai-bot-logo.png";
+import diyaAiLogo from "@/assets/diya-ai-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ReactMarkdown from "react-markdown";
@@ -196,10 +195,10 @@ export function FloatingBot() {
             className="fixed bottom-20 lg:bottom-6 right-4 md:right-6 z-50 flex flex-col items-center gap-1 rounded-2xl bg-transparent hover:scale-105 transition-transform active:scale-95"
             aria-label="Ask Diya - AI education counselor"
           >
-            <span className="relative h-14 w-14">
-              <span className="flex h-14 w-14 overflow-hidden rounded-full bg-gradient-to-br from-primary to-blue-700 shadow-[0_12px_36px_-10px_rgba(37,99,235,.75)]">
-                <img src={aiBotLogo} alt="" className="h-full w-full rounded-full object-cover" />
-              </span>
+              <span className="relative h-14 w-14">
+                <span className="flex h-14 w-14 overflow-hidden rounded-full bg-gradient-to-br from-primary to-blue-700 shadow-[0_12px_36px_-10px_rgba(37,99,235,.75)]">
+                <img src={diyaAiLogo} alt="" className="h-full w-full rounded-full object-cover" />
+                </span>
               <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[9px] font-black text-accent-foreground">AI</span>
             </span>
             <span className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-extrabold text-primary shadow-md ring-1 ring-slate-200">Ask Diya</span>
@@ -227,7 +226,7 @@ export function FloatingBot() {
             <div className="flex items-center justify-between px-4 py-3 bg-primary text-primary-foreground">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-primary-foreground/20 flex items-center justify-center overflow-hidden">
-                  <img src={dcLogo} alt="DekhoCampus AI" className="w-7 h-7 object-contain" />
+                  <img src={diyaAiLogo} alt="Diya AI" className="w-8 h-8 object-contain" />
                 </div>
                 <div>
                   <h3 className="font-bold text-sm">Diya by DekhoCampus</h3>
@@ -244,7 +243,7 @@ export function FloatingBot() {
               {messages.map((msg, i) => (
                 <div key={i} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
                   <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center ${msg.role === "user" ? "bg-accent" : "bg-secondary"}`}>
-                    {msg.role === "user" ? <User className="w-3.5 h-3.5 text-accent-foreground" /> : <Bot className="w-3.5 h-3.5 text-secondary-foreground" />}
+                    {msg.role === "user" ? <User className="w-3.5 h-3.5 text-accent-foreground" /> : <img src={diyaAiLogo} alt="Diya" className="w-4 h-4 object-contain" />}
                   </div>
                   <div className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm ${msg.role === "user" ? "user-bubble rounded-br-md" : "ai-bubble rounded-bl-md"}`}>
                     {msg.role === "assistant" ? (
@@ -258,7 +257,7 @@ export function FloatingBot() {
               {isLoading && messages[messages.length - 1]?.role === "user" && (
                 <div className="flex gap-2">
                   <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center">
-                    <Bot className="w-3.5 h-3.5 text-secondary-foreground" />
+                    <img src={diyaAiLogo} alt="Diya" className="w-4 h-4 object-contain" />
                   </div>
                   <div className="ai-bubble px-3 py-2 rounded-2xl rounded-bl-md">
                     <Loader2 className="w-4 h-4 animate-spin text-primary" />

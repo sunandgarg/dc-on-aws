@@ -349,7 +349,7 @@ export default function ArticleDetail() {
                 {article.category}
               </Link>
 
-              <h1 className="mt-4 max-w-5xl text-[30px] sm:text-[40px] lg:text-[52px] font-extrabold text-foreground leading-[1.04] tracking-[-0.045em] break-words text-balance">
+              <h1 className="mt-4 max-w-5xl text-[22px] sm:text-[32px] lg:text-[42px] xl:text-[46px] font-extrabold text-foreground leading-[1.08] lg:leading-[1.06] tracking-[-0.035em] sm:tracking-[-0.04em] break-words text-balance">
                 {article.title}
               </h1>
 

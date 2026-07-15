@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Send, Bot, User, Loader2, ArrowLeft } from "lucide-react";
+import diyaAiLogo from "@/assets/diya-ai-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ReactMarkdown from "react-markdown";
@@ -354,11 +355,11 @@ export function AIChatFullScreen({ isOpen, onClose, initialMessage, leadData, on
                 <Button variant="ghost" size="icon" onClick={onClose} className="rounded-xl">
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
-                <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
-                  <Bot className="w-5 h-5 text-primary-foreground" />
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center overflow-hidden">
+                  <img src={diyaAiLogo} alt="Diya AI" className="w-7 h-7 object-contain" />
                 </div>
                 <div>
-                  <h1 className="font-bold text-foreground text-sm">DekhoCampus Counselor</h1>
+                  <h1 className="font-bold text-foreground text-sm">Diya AI</h1>
                   <p className="text-xs text-muted-foreground">Your education guide</p>
                 </div>
               </div>
@@ -373,7 +374,7 @@ export function AIChatFullScreen({ isOpen, onClose, initialMessage, leadData, on
                 {messages.map((msg, i) => (
                   <div key={i} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${msg.role === "user" ? "bg-accent" : "bg-secondary"}`}>
-                      {msg.role === "user" ? <User className="w-4 h-4 text-accent-foreground" /> : <Bot className="w-4 h-4 text-secondary-foreground" />}
+                      {msg.role === "user" ? <User className="w-4 h-4 text-accent-foreground" /> : <img src={diyaAiLogo} alt="Diya" className="w-5 h-5 object-contain" />}
                     </div>
                     <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm ${msg.role === "user" ? "user-bubble rounded-br-md" : "ai-bubble rounded-bl-md"}`}>
                       {msg.role === "assistant" ? (
@@ -399,7 +400,7 @@ export function AIChatFullScreen({ isOpen, onClose, initialMessage, leadData, on
                 {isLoading && messages[messages.length - 1]?.role === "user" && (
                   <div className="flex gap-3">
                     <div className="w-8 h-8 rounded-xl bg-secondary flex items-center justify-center">
-                      <Bot className="w-4 h-4 text-secondary-foreground" />
+                      <img src={diyaAiLogo} alt="Diya" className="w-5 h-5 object-contain" />
                     </div>
                     <div className="ai-bubble px-4 py-3 rounded-2xl rounded-bl-md">
                       <Loader2 className="w-4 h-4 animate-spin text-primary" />
