@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { ChevronDown, GraduationCap, BookOpen, FileText, Briefcase, Stethoscope, Palette, Sparkles, Trophy, Scale, Award, NotebookPen, Newspaper } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -42,10 +43,12 @@ export function MegaMenu() {
   const [open, setOpen] = useState<string | null>(null);
   const [panelTop, setPanelTop] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const h = (e: PointerEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(null);
+      const target = e.target as Node;
+      if (ref.current && !ref.current.contains(target) && !panelRef.current?.contains(target)) setOpen(null);
     };
     document.addEventListener("pointerdown", h);
     return () => document.removeEventListener("pointerdown", h);
@@ -313,9 +316,10 @@ export function MegaMenu() {
         );
       })}
       <AnimatePresence initial={false}>
-        {activeSection?.columns && (
+        {activeSection?.columns && typeof document !== "undefined" && createPortal(
           <motion.div
             key={activeSection.label}
+            ref={panelRef}
             role="menu"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -347,7 +351,8 @@ export function MegaMenu() {
               <div><p className="text-sm font-extrabold text-slate-900">Explore with confidence</p><p className="text-xs text-slate-500">Verified colleges, courses, exams and decision tools in one place.</p></div>
               {activeSection.href && <Link to={activeSection.href} onClick={() => setOpen(null)} className="rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground shadow-lg shadow-primary/20">View all {activeSection.label} →</Link>}
             </div>
-          </motion.div>
+          </motion.div>,
+          document.body
         )}
       </AnimatePresence>
     </nav>
