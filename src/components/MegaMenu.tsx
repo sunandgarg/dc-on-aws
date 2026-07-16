@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { ChevronDown, GraduationCap, BookOpen, FileText, Briefcase, Stethoscope, Palette, Sparkles, Trophy, Scale, Award, NotebookPen, Newspaper } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { motion, AnimatePresence } from "framer-motion";
 import { STREAM_CATEGORIES } from "@/lib/streamCategories";
 
 interface Section {
@@ -277,7 +276,12 @@ export function MegaMenu() {
   const activeSection = open ? sections.find((section) => section.label === open) : undefined;
 
   return (
-    <nav ref={ref} className="relative hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
+    <nav
+      ref={ref}
+      onPointerDown={(event) => event.stopPropagation()}
+      className="relative hidden lg:flex items-center gap-0.5"
+      aria-label="Main navigation"
+    >
       {sections.map((s) => {
         const Icon = iconFor(s.label);
         const active = open === s.label;
@@ -297,8 +301,7 @@ export function MegaMenu() {
                 aria-expanded={active}
                 aria-haspopup="menu"
                 onPointerEnter={() => { if (open && !active) setOpen(s.label); }}
-                onFocus={() => setOpen(s.label)}
-                onClick={(event) => {
+            onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
                   if (active) setOpen(null);
@@ -314,15 +317,10 @@ export function MegaMenu() {
           </div>
         );
       })}
-      <AnimatePresence initial={false}>
-        {activeSection?.columns && (
-          <motion.div
-            key={activeSection.label}
+      {activeSection?.columns && (
+          <div
             ref={panelRef}
             role="menu"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 6 }}
             onPointerDown={(event) => event.stopPropagation()}
             style={{ top: panelTop }}
             className={`fixed left-1/2 z-[80] grid h-auto w-[min(1370px,calc(100vw-32px))] max-w-[calc(100vw-32px)] max-h-[min(72vh,620px)] -translate-x-1/2 origin-top gap-4 overflow-x-hidden overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] sm:gap-5 sm:p-5 xl:p-6 ${menuGridClass(activeSection.columns.length)}`}
@@ -350,9 +348,8 @@ export function MegaMenu() {
               <div><p className="text-sm font-extrabold text-slate-900">Explore with confidence</p><p className="text-xs text-slate-500">Verified colleges, courses, exams and decision tools in one place.</p></div>
               {activeSection.href && <Link to={activeSection.href} onClick={() => setOpen(null)} className="rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground shadow-lg shadow-primary/20">View all {activeSection.label} →</Link>}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+      )}
     </nav>
   );
 }
