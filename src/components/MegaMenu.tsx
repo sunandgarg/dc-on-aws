@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { ChevronDown, GraduationCap, BookOpen, FileText, Briefcase, Stethoscope, Palette, Sparkles, Trophy, Scale, Award, NotebookPen, Newspaper } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -316,7 +315,7 @@ export function MegaMenu() {
         );
       })}
       <AnimatePresence initial={false}>
-        {activeSection?.columns && typeof document !== "undefined" && createPortal(
+        {activeSection?.columns && (
           <motion.div
             key={activeSection.label}
             ref={panelRef}
@@ -351,8 +350,7 @@ export function MegaMenu() {
               <div><p className="text-sm font-extrabold text-slate-900">Explore with confidence</p><p className="text-xs text-slate-500">Verified colleges, courses, exams and decision tools in one place.</p></div>
               {activeSection.href && <Link to={activeSection.href} onClick={() => setOpen(null)} className="rounded-xl bg-primary px-4 py-2.5 text-xs font-extrabold text-primary-foreground shadow-lg shadow-primary/20">View all {activeSection.label} →</Link>}
             </div>
-          </motion.div>,
-          document.body
+          </motion.div>
         )}
       </AnimatePresence>
     </nav>
