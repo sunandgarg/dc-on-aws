@@ -42,7 +42,6 @@ export function MegaMenu() {
   const [open, setOpen] = useState<string | null>(null);
   const [panelTop, setPanelTop] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
-  const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
     const h = (e: PointerEvent) => {
@@ -52,14 +51,16 @@ export function MegaMenu() {
     return () => document.removeEventListener("pointerdown", h);
   }, []);
 
-  const positionPanel = (label: string) => {
-    const trigger = triggerRefs.current[label];
-    if (trigger) setPanelTop(trigger.getBoundingClientRect().bottom + 10);
+  // Anchor the menu to the complete sticky header, never to an individual
+  // trigger. This keeps every section aligned to the same left/right edges.
+  const positionPanel = () => {
+    const header = ref.current?.closest("header");
+    if (header) setPanelTop(Math.max(0, header.getBoundingClientRect().bottom + 8));
   };
 
   useEffect(() => {
     if (!open) return;
-    const update = () => positionPanel(open);
+    const update = () => positionPanel();
     update();
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
@@ -68,6 +69,14 @@ export function MegaMenu() {
       window.removeEventListener("scroll", update, true);
     };
   }, [open]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const byCat = (arr: any[], cat: string) => arr.filter((x: any) => (x.category || "").toLowerCase() === cat.toLowerCase());
   const byState = (arr: any[]) => {
@@ -257,14 +266,11 @@ export function MegaMenu() {
     return Sparkles;
   };
 
-  // Keep the panel centred in the viewport rather than in the nav's own width.
-  // This prevents the right-most column being clipped on wide menus (especially
-  // Courses, Study Material and CAT Universe) while retaining a safe gutter on
-  // smaller laptop screens.
+  // One shared outer width gives every menu exactly the same alignment. The
+  // inner grid adapts to the number of content columns without changing the
+  // panel's position or causing horizontal overflow.
   const menuGridClass = (columns: number) =>
-    columns >= 4
-      ? "w-[min(94vw,1180px)] grid-cols-4"
-      : "w-[min(90vw,980px)] grid-cols-3";
+    columns >= 4 ? "grid-cols-4" : columns === 2 ? "grid-cols-2" : "grid-cols-3";
 
   const activeSection = open ? sections.find((section) => section.label === open) : undefined;
 
@@ -286,15 +292,15 @@ export function MegaMenu() {
             ) : (
               <button
                 type="button"
-                ref={(node) => { triggerRefs.current[s.label] = node; }}
                 aria-expanded={active}
                 aria-haspopup="menu"
-                onPointerEnter={() => { if (open && !active) { positionPanel(s.label); setOpen(s.label); } }}
+                onPointerEnter={() => { if (open && !active) setOpen(s.label); }}
+                onFocus={() => setOpen(s.label)}
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
                   if (active) setOpen(null);
-                  else { positionPanel(s.label); setOpen(s.label); }
+                  else setOpen(s.label);
                 }}
                 className={`flex items-center gap-1 px-2.5 py-2 text-sm font-medium rounded-xl transition-colors ${active ? "bg-primary/10 text-primary" : "text-foreground/80 hover:text-foreground hover:bg-secondary"}`}
               >
@@ -316,7 +322,7 @@ export function MegaMenu() {
             exit={{ opacity: 0, y: 6 }}
             onPointerDown={(event) => event.stopPropagation()}
             style={{ top: panelTop }}
-            className={`fixed left-1/2 z-[80] grid max-h-[min(72vh,620px)] max-w-[calc(100vw-2rem)] -translate-x-1/2 origin-top gap-4 overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] sm:gap-5 sm:p-5 xl:p-6 ${menuGridClass(activeSection.columns.length)}`}
+            className={`fixed left-1/2 z-[80] grid h-auto w-[min(1370px,calc(100vw-32px))] max-w-[calc(100vw-32px)] max-h-[min(72vh,620px)] -translate-x-1/2 origin-top gap-4 overflow-x-hidden overflow-y-auto rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_30px_90px_-34px_rgba(15,23,42,.45)] sm:gap-5 sm:p-5 xl:p-6 ${menuGridClass(activeSection.columns.length)}`}
           >
             {activeSection.columns.map((col, i) => (
               <div key={i} className="min-w-0 rounded-2xl bg-slate-50/90 p-3.5 ring-1 ring-inset ring-slate-100 sm:p-4">
